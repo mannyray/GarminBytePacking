@@ -108,11 +108,87 @@ module BytePacking{
         Test.assertEqual(randomNumberNegative,newRandomNumberNegative);
         return true;
     }
-}
 
-/*
-    TODO: tests
-    - TODO resolve static static see if you can chain additional methods
-    - exception thrown errors
-    - todo casting as a long input that is not a long?
-*/
+    (:test)
+    function errorTest(logger as Toybox.Test.Logger) as Boolean {
+        var randomButTooShortInputArray = [0xFF,0xFF,0xFD, 0xDE, 0xC7, 0xE0, 0x8D]b;
+        try {
+            BytePacking.Long.byteArrayToLong(randomButTooShortInputArray);
+        } catch (e instanceof Toybox.Lang.InvalidValueException) {
+            var acquiredErrorMessage = e.getErrorMessage();
+            var expectedErrorMessage = "Byte array should be of size 8 and not: 7";
+            Test.assertMessage(
+                acquiredErrorMessage.find(expectedErrorMessage) != null,
+                "Invalid error message. Got '" +
+                acquiredErrorMessage +
+                "', expected: '" +
+                expectedErrorMessage +
+                "'"
+            );
+        }
+        return true;
+    }
+
+    (:test)
+    function wrongInputTypeTest(logger as Toybox.Test.Logger) as Boolean {
+        try {
+            var notALongNumber = 100.09;
+            BytePacking.Long.longToByteArray(notALongNumber);
+        } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
+            var acquiredErrorMessage = e.getErrorMessage();
+            var expectedErrorMessage = "Expecting Toybox.Lang.Long argument type";
+            Test.assertMessage(
+                acquiredErrorMessage.find(expectedErrorMessage) != null,
+                "Invalid error message. Got '" +
+                acquiredErrorMessage +
+                "', expected: '" +
+                expectedErrorMessage +
+                "'"
+            );
+        }
+    
+       try {
+            var notALongNumber = 100;//a "Number" type
+            BytePacking.Long.longToByteArray(notALongNumber);
+        } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
+            var acquiredErrorMessage = e.getErrorMessage();
+            var expectedErrorMessage = "Expecting Toybox.Lang.Long argument type";
+            Test.assertMessage(
+                acquiredErrorMessage.find(expectedErrorMessage) != null,
+                "Invalid error message. Got '" +
+                acquiredErrorMessage +
+                "', expected: '" +
+                expectedErrorMessage +
+                "'"
+            );
+        }
+        return true;
+    }
+
+    (:test)
+    function chainingMethods(logger as Toybox.Test.Logger) as Boolean {
+        /*
+        Since this class tested extends Toybox.Lang.Long then want to do a basic
+        test if we can chain on Long methods to BytePacking.Long methods. Not a controversial test
+        since the output of byteArrayToLong _is_ a Toybox.Lang.Long.
+        */
+        Test.assert(BytePacking.Long.byteArrayToLong(BytePacking.Long.longToByteArray(100l)).equals(100l));
+
+        Test.assert(false == (100l).equals(100 as Number));
+        // just as 100 Long is not the same as a 100 Number then
+        // so is 100 BytePacking.Long not the same as 100 Long
+        var testVar = 100 as BytePacking.Long;
+        Test.assert(false == testVar.equals(100l));
+
+        /*
+        even though none of our methods in BytePacking.Long return 
+        a BytePacking.Long type, we still experiment here since we don't
+        restrict class user from defning things as:
+        var testVar = 100 as BytePacking.Long;
+        */
+        Test.assert(200l == testVar + 100l);
+        
+        return true;
+    }
+
+}
