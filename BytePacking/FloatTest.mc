@@ -11,6 +11,7 @@ module BytePacking{
 
     (:test)
     function FloatTest_basicTest(logger as Toybox.Test.Logger) as Boolean {
+        //TODO: make this some loop for multiple inputs
         var input = 100f;
         var computedArray = BytePacking.Float.floatToByteArray(input);
         var expectedArray = [0x42,0xc8,0x0,0x0]b;        
@@ -19,6 +20,11 @@ module BytePacking{
         var garminComputedArray = new [4]b;
         garminComputedArray.encodeNumber(input,Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG});
         assertEquivalencyBetweenByteArrays(garminComputedArray, expectedArray);
+
+
+        var computedFloat = BytePacking.Float.byteArrayToFloat(computedArray);
+        Test.assertEqualMessage(input, computedFloat, "Expected " + input + ", but got " +computedFloat);
+
         return true;
     }
 }

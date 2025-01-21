@@ -83,8 +83,6 @@ module BytePacking{
                 longBitVersion = longBitVersion | one;
                 inputCopy = inputCopy - inputCopy.toNumber();//TODO: explain
             }
-
-            
             output.bitCount++;
         }
         output.long = longBitVersion;
@@ -92,8 +90,68 @@ module BytePacking{
         return output;
     }
 
-    function getDecimalOfBits( input as BinaryDataPair) as Toybox.Lang.Double {
-        return 0d;
+    function getDecimalOfBits( input as BinaryDataPair ) as Toybox.Lang.Double {
+        /*
+            will walk through the code with an example
+
+            Input specification by example:
+                say input.long is 5 which in binary is "101"
+                while input.bitCount is 5 which means the 
+                binary "decimal" number is "0.00101" (we shift the the "101" 2 spots over to get 5 binary decimal spots)
+                which in decimal is 0.15625 according to
+                https://www.rapidtables.com/convert/number/binary-to-decimal.html?x=0.00101
+
+                our input stores the binary decimal as a long while the bitCount deterines where the "." is located
+                long is favoured for storage as it is easy to use in bit manipulation.
+        */
+
+        var long = input.long;
+        var bitCountBeforeZero = 0;
+
+        var output = 0d;
+       
+        while(long > 0){
+            var isFirstBitOne = 1 == (1l && long);
+
+            if(isFirstBitOne){
+                output = output + 1;
+            }
+
+            output = output / 2;
+            long = long >> 1;
+            bitCountBeforeZero++;
+        }
+
+        for(var i=0; i<input.bitCount - bitCountBeforeZero; i++){
+            output = output / 2;
+        }
+
+        return output;
     }
 
+    function longWithFirstNBitsOne(bitCount as Toybox.Lang.Number) as Toybox.Lang.Long{
+        //TODO valiate Number
+        var output = 0l;
+        var bitCountTotal = 64; //TODO some sort of universal constant
+        for(var i=0; i<bitCount; i++){
+            output = output << 1;
+            output = output + 1;
+        }
+        if(bitCount != 64){ // TODO: understand effect of <<0
+            // off by one error handle
+            output = output << (bitCountTotal-bitCount);
+        }
+        return output;
+    }
+
+    function longWithFirstNBitsZero(bitCount as Toybox.Lang.Number) as Toybox.Lang.Long{
+        //TODO valiate Number
+        var output = 0l;
+        var bitCountTotal = 64; //TODO some sort of universal constant
+        for(var i=0; i<bitCountTotal-bitCount; i++){
+            output = output << 1;
+            output = output + 1;
+        }
+        return output;
+    }
 }

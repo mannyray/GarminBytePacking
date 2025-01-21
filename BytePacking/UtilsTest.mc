@@ -58,13 +58,15 @@ module BytePacking{
         var depth as Number;
         var binaryVersionOfDecimal as String;
         var binaryWithoutLeadingZeros as String;
-        function initialize(doubleInput as Double, maxDepthCount as Number, bits as Number, long as Long, binaryVersionOfDecimalInput as String, binaryWithoutLeadingZerosInput as String){
+        var truncatedValueOfBinaryInDouble as Double;
+        function initialize(doubleInput as Double, maxDepthCount as Number, bits as Number, long as Long, binaryVersionOfDecimalInput as String, binaryWithoutLeadingZerosInput as String, truncatedEquivalent as Double){
             double = doubleInput;
             depth = maxDepthCount;
             bitsRequired = bits;
             longEquivalent = long;
             binaryVersionOfDecimal = binaryVersionOfDecimalInput;
             binaryWithoutLeadingZeros = binaryWithoutLeadingZerosInput;
+            truncatedValueOfBinaryInDouble = truncatedEquivalent;
         }
     }
 
@@ -83,9 +85,9 @@ module BytePacking{
         var maxDepthDefault = totalBitCount-bitCountForSign-bitCountForExponent;
 
         var testCases = [
-            new GetBitsOfDecimal_TestCase(0.125d,maxDepthDefault,3,1l,".001","1"),
+            new GetBitsOfDecimal_TestCase(0.125d,maxDepthDefault,3,1l,".001","1",0.125d),
             // test 0 case
-            new GetBitsOfDecimal_TestCase(0d,maxDepthDefault,0,0l,"_nill_","_nill_"),
+            new GetBitsOfDecimal_TestCase(0d,maxDepthDefault,0,0l,"_nill_","_nill_",0d),
             /*
                 Running https://www.rapidtables.com/convert/number/decimal-to-binary.html?x=.12341465
                 returns 0.0001111110011000001, but then running with the output:
@@ -100,16 +102,25 @@ module BytePacking{
                 is actually 0.12341464999999995911 - real close.
 
             */
-            new GetBitsOfDecimal_TestCase(0.12341465d,maxDepthDefault,52,555810171752060l,"0.0001111110011000000110100011110110011000111001111100","1111110011000000110100011110110011000111001111100"),
+            new GetBitsOfDecimal_TestCase(
+                0.12341465d,
+                maxDepthDefault,
+                52,
+                555810171752060l,
+                "0.0001111110011000000110100011110110011000111001111100",
+                "1111110011000000110100011110110011000111001111100",
+                0.12341464999999995911d
+            ),
             /*
                 0.1 in decimal, in binary, has inifinite number of repeating binary numbers.
                 Here we test, how many binary bits do we want to extract from this infinitely repeating pattern of "0011"
             */
-            new GetBitsOfDecimal_TestCase(0.1d,10,10,102l,"0.0001100110","1100110"),
-            new GetBitsOfDecimal_TestCase(0.1d,20,20,104857l,"0.00011001100110011001","11001100110011001"),
-            new GetBitsOfDecimal_TestCase(0.1d,0,0,0l,"0.0","0"),
+            new GetBitsOfDecimal_TestCase(0.1d,10,10,102l,"0.0001100110","1100110",0.099609375d),
+            new GetBitsOfDecimal_TestCase(0.1d,20,20,104857l,"0.00011001100110011001","11001100110011001",0.09999942779541015625d),
+            new GetBitsOfDecimal_TestCase(0.1d,0,0,0l,"0.0","0",0d),
         ];
         for(var i=0; i<testCases.size(); i++){
+
             var bdp =  getBitsOfDecimal(testCases[i].double,testCases[i].depth);
             Test.assertEqualMessage(bdp.bitCount,testCases[i].bitsRequired,
                 Toybox.Lang.format(
@@ -121,6 +132,12 @@ module BytePacking{
                 Toybox.Lang.format(
                     "Long stored version of $1$ should be $3$ (or in binary $3$), but got $4$",
                     [testCases[i].double,testCases[i],testCases[i].longEquivalent,bdp.long]
+                )
+            );
+            Test.assertEqualMessage(getDecimalOfBits(bdp),testCases[i].truncatedValueOfBinaryInDouble,
+                Toybox.Lang.format(
+                    "Truncated double version of $1$ should be $2$, but got $3$",
+                    [testCases[i].double,testCases[i].truncatedValueOfBinaryInDouble,getDecimalOfBits(bdp)]
                 )
             );
         }
@@ -174,6 +191,65 @@ module BytePacking{
                 "'"
             );
         }
+        return true;
+    }
+
+
+    (:test)
+    function UtilTest_longWithFirstNBitsOne_Test(logger as Toybox.Test.Logger) as Boolean {
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(1)),
+            [0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(3)),
+            [0xE0,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(15)),
+            [0xFF,0xFE,0x00,0x00,0x00,0x00,0x00,0x00]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(16)),
+            [0xFF,0xFF,0x00,0x00,0x00,0x00,0x00,0x00]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(63)),
+            [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFE]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(64)),
+            [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
+        );
+        return true;
+    }
+
+    (:test)
+    function UtilTest_longWithFirstNBitsZero_Test(logger as Toybox.Test.Logger) as Boolean {
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(1)),
+            [0x7F,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(3)),
+            [0x1F,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(15)),
+            [0x00,0x01,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(16)),
+            [0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(63)),
+            [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01]b
+        );
+        assertEquivalencyBetweenByteArrays(
+            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(64)),
+            [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b
+        );
         return true;
     }
 }
