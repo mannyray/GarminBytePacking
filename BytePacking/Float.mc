@@ -28,12 +28,12 @@ module BytePacking{
             */
             var isNegative = input < 0;
 
-            var longEquivalentInBitsOfFloat = 0;
+            var longEquivalentInBitsOfFloat = 0l;
 
             
             var nonnegativeIntegerPortionOfFloat = input.abs().toLong();
 
-            if(nonnegativeIntegerPortionOfFloat > 0){//TODO: explain our output  if statement
+            if(nonnegativeIntegerPortionOfFloat > 0){//TODO: explain our if statement here
                 /*
                     let's say our number in binary decimal is "101.001"
                     thus integerPortion is binary "101" (i.e. 5)
@@ -42,19 +42,28 @@ module BytePacking{
                 var binaryStoreOfNonNegativeIntegerPortion = new BinaryDataPair(nonnegativeIntegerPortionOfFloat);
 
                 /*
-                the BinaryDataPair stores it as bitCount=3, but we subtract one as in float IEEE-754 representation, 
-                // the leading "1" bit is assumed and so we can ignore it. Since we subtact one from bitCount then we must also
-                /*
-                    if(binaryStoreOfNonNegativeIntegerPortion.long>0){//TODO something about positive exponent
-                        binaryStoreOfNonNegativeIntegerPortion.bitCount--;
-                        binaryStoreOfNonNegativeIntegerPortion.long = binaryStoreOfNonNegativeIntegerPortion.long & longWithFirstNBitsZero(BITS_IN_LONG - binaryStoreOfNonNegativeIntegerPortion.bitCount);
-                    }
+                    the BinaryDataPair stores it as bitCount=3, but we subtract one as in float IEEE-754 representation, 
+                    the leading "1" bit is assumed and so we can ignore it.
                 */
+                
+                // "101" in binary gets the leading one removed so becomes "1" so the long value becomes 1 in decimal
+                //System.println("before " + binaryStoreOfNonNegativeIntegerPortion.long);
+                binaryStoreOfNonNegativeIntegerPortion.long = binaryStoreOfNonNegativeIntegerPortion.long & longWithFirstNBitsZero(BITS_IN_LONG - binaryStoreOfNonNegativeIntegerPortion.bitCount+1);
+                //System.println("after " + binaryStoreOfNonNegativeIntegerPortion.long);
+                //by removing the "1", we adjust bit count
+                binaryStoreOfNonNegativeIntegerPortion.bitCount--;
+                
+                // Bias is a property of the IEEE 754 standard. 
+                // our number "101.001" becomes represented as ".01001" * 2^binaryStoreOfNonNegativeIntegerPortion.bitCount = ".01001" * 2^2
+                // with the leading "1" being implicit. 2^2 is two bit shifts to the left which would give us back "101.001"
+                var exponentValue = FLOAT_EXPONENT_BIAS + binaryStoreOfNonNegativeIntegerPortion.bitCount;
+                var exponentValueInProperBitLocation = exponentValue.toLong() << BITS_IN_FLOAT_MANTISSA;
 
-                var bitsRequiredToStoreTheNonNegativeIntegerPortion = binaryStoreOfNonNegativeIntegerPortion.bitCount - 1;
+
+                //System.println("integer portion " + binaryStoreOfNonNegativeIntegerPortion.bitCount);
                 // the rest of the decimal part (e.g. "0.001" or 0.125 in decimal) gets to take up the remaining part of the MANTISSA
-                var bitsRemainingForDecimal = BITS_IN_FLOAT_MANTISSA - bitsRequiredToStoreTheNonNegativeIntegerPortion;
-
+                var bitsRemainingForDecimal = BITS_IN_FLOAT_MANTISSA - binaryStoreOfNonNegativeIntegerPortion.bitCount;
+                //System.println("bitsRemainingForDecimal" + bitsRemainingForDecimal);
                 /*
                     now we store the decimal in long format via BinaryDataPair which will be easier for us to manipulate later on
                     "0.001" in binary will be stored in BinaryDataPair as long=1,bitCount=3
@@ -63,23 +72,33 @@ module BytePacking{
                     it can be accurately represented by a double which has a similar bit structure
                     https://stackoverflow.com/questions/259015/can-every-float-be-expressed-exactly-as-a-double
                 */
-                var binaryStoreOfDecimalPortion = getBitsOfDecimal(
-                    (input.abs() - nonnegativeIntegerPortionOfFloat).toDouble(), 
-                    bitsRemainingForDecimal
-                );
 
-                var exponentValue = FLOAT_EXPONENT_BIAS + bitsRequiredToStoreTheNonNegativeIntegerPortion; //TODO minus here
-                var exponentValueInProperBitLocation = exponentValue.toLong() << BITS_IN_FLOAT_MANTISSA;
-
-                var integerPortionInProperBitLocation = binaryStoreOfNonNegativeIntegerPortion.long << bitsRemainingForDecimal;
-                var decimalPortionInProperBitLocation = binaryStoreOfDecimalPortion.long;
-
-                //TODO? what about the one being removed
-
+                var decimalPortionInProperBitLocation = 0l;
+                var integerPortionInProperBitLocation = 0l;
+                if(bitsRemainingForDecimal>0){
+                    var binaryStoreOfDecimalPortion = getBitsOfDecimal(
+                        (input.abs() - nonnegativeIntegerPortionOfFloat).toDouble(), 
+                        bitsRemainingForDecimal
+                    );
+                    //we might not be using the entire mantissa, so we shift up the decimal portion to follow right after the integer portion.
+                    decimalPortionInProperBitLocation = binaryStoreOfDecimalPortion.long << (bitsRemainingForDecimal - binaryStoreOfDecimalPortion.bitCount);
+                    // integer bits lead the decimal bits
+                    integerPortionInProperBitLocation = binaryStoreOfNonNegativeIntegerPortion.long << bitsRemainingForDecimal; 
+                }
+                else{
+                    // there is only room for the integer portion
+                    // TODO: why the negative one? use 16777372 as an example
+                    integerPortionInProperBitLocation = binaryStoreOfNonNegativeIntegerPortion.long >> (-1*bitsRemainingForDecimal); 
+                }
                 longEquivalentInBitsOfFloat = exponentValueInProperBitLocation | integerPortionInProperBitLocation | decimalPortionInProperBitLocation;
             }
             else{
-
+                /*
+                    var binaryStoreOfDecimalPortion = getBitsOfDecimal(
+                        (input.abs() - nonnegativeIntegerPortionOfFloat).toDouble(), 
+                        bitsRemainingForDecimal
+                    );
+                */
             }
 
             if(isNegative){
