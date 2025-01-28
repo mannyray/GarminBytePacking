@@ -48,6 +48,18 @@ module BytePacking{
         }
     }
 
+
+    class DecimalData{
+        var long as Toybox.Lang.Long;
+        var totalBitCount as Toybox.Lang.Number;
+        var bitCountAfterFirstOne as Toybox.Lang.Number;
+        function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){
+            long = l;
+            totalBitCount = lbc;
+            bitCountAfterFirstOne = bcafo;
+        }
+    }
+
     /*
         For a given Decimal number, say 0.1875, we return a Long representation of it along with the
         amount of binary bits required to store it. The equivalent of 0.1875 in "decimal" binary is
@@ -58,15 +70,15 @@ module BytePacking{
 
         maximumBits is useful for us to restrict how many binary bits we want to compute as some binary 
         decimals may have infinite numbers or we may not care about the remainder bits after a certain level
-        of resolution.
+        of resolution. - TODO: replace with optionDict
     */
-    function getBitsOfDecimal(input as Toybox.Lang.Double, maximumBits as Toybox.Lang.Number) as BinaryDataPair{
+    function getBitsOfDecimal(input as Toybox.Lang.Double, optionDict as Toybox.Lang.Dictionary) as DecimalData{
         
         if(!(input instanceof Toybox.Lang.Double) ){
             /*
                 Necessary, to avoid unexpected behaviour if user supplies a Number for example.
             */
-            throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Double argument type",null,null);
+            throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Double argument type as first argument",null,null);
         }
 
         if(input < 0 or input >= 1){
@@ -74,18 +86,68 @@ module BytePacking{
             We expect input of the type 0.123... . The caller must themselves format the double to remove
             the leading number (e.g. var double = 1.123; var input = double - decimal.toLong(); )
             */
-            throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double in the range of (0,1)");
+            throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double in the range of (0,1) as first argument");
         }
 
+        // TODO make this a hidden function to verify the dictionary
+        if(!(optionDict instanceof Toybox.Lang.Dictionary)){
+            //TODO: test this
+            throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Dictionary argument type as second argument",null,null);
+        }
 
-        var output = new BinaryDataPair(0l);
+        if(!(optionDict instanceof Toybox.Lang.Dictionary)){
+            //TODO: test this
+            throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Dictionary argument type as second argument",null,null);
+        }
+
+        if(!(   optionDict.size()==1 and (optionDict.hasKey(:maximumBits) or optionDict.hasKey(:maximumBitsAfterFirstOne)))   ){
+            //TODO: test this
+            throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO" + optionDict);
+        }
+
+        if(optionDict.hasKey(:maximumBits)){
+            // TODO: test this
+            if(!(optionDict[:maximumBits] instanceof Toybox.Lang.Number and optionDict[:maximumBits] >= 0)){//TODO: upper limit?
+                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO");
+            }
+        }
+
+        if(optionDict.hasKey(:maximumBitsAfterFirstOne)){
+            // TODO: test this
+            if(!(optionDict[:maximumBitsAfterFirstOne] instanceof Toybox.Lang.Number and optionDict[:maximumBitsAfterFirstOne] >= 0)){//TODO: upper limit?
+                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO");
+            }
+        }
+        
+
+        var maximumBits = optionDict.hasKey(:maximumBits) ? optionDict[:maximumBits] : 10000000; //TODO change this one more than option possible
+        var maximumBitsAfterFirstOne = optionDict.hasKey(:maximumBitsAfterFirstOne) ? optionDict[:maximumBitsAfterFirstOne] : 10000000; //TODO change this one more than option possible
+
+        //TODO: maximumBits has to be a dictionary which specifies which maximum we are using
+        // only one maximum can be defined in the dict: maximumOverAllBits XOR maximumBitsAfterFirstOne
+        // }
+
+        var totalBitCount = 0;
+        var longEquivalent = 0l;
+        var bitCountSinceFirstOne = 0;
 
         // in binary -  this has only the last, rightmost, bit as "1"
         var one = 1l;
-
         var inputCopy = input;
 
-        while(inputCopy != 0 and output.bitCount < maximumBits){
+        while(inputCopy != 0){
+
+            if(optionDict.hasKey(:maximumBits)){
+                if(totalBitCount>= maximumBits){
+                    break;
+                }
+            }
+
+            if(optionDict.hasKey(:maximumBitsAfterFirstOne)){
+                if(bitCountSinceFirstOne>= maximumBitsAfterFirstOne){
+                    break;
+                }
+            }
             /*
                 Through this loop, we reduce the original decimal
                 to zero, by constantly doubling it and removing the 
@@ -107,18 +169,25 @@ module BytePacking{
                 bits required, including the first potential batch of "0" bits.
             */
 
-            output.long = output.long<<1;
+            longEquivalent = longEquivalent<<1;
 
             inputCopy = inputCopy*2;
 
-            if(inputCopy >= 1){
-                output.long = output.long | one;
-                inputCopy = inputCopy - inputCopy.toNumber();//toNumber rounds inputCopy to integer
+            if(bitCountSinceFirstOne > 0){
+                bitCountSinceFirstOne++;
             }
-            output.bitCount++;
+
+            if(inputCopy >= 1){
+                longEquivalent = longEquivalent | one;
+                inputCopy = inputCopy - inputCopy.toNumber();//toNumber rounds inputCopy to integer
+                if(bitCountSinceFirstOne == 0){
+                    bitCountSinceFirstOne = 1;
+                }
+            }
+            totalBitCount++;
         }
 
-        return output;
+        return new DecimalData(longEquivalent, totalBitCount, bitCountSinceFirstOne);
     }
 
     /*
@@ -137,7 +206,7 @@ module BytePacking{
         
         The code in this function returns the double version of a decimal encoded in BinaryDataPair format.
     */
-    function getDecimalOfBits( input as BinaryDataPair ) as Toybox.Lang.Double {
+    function getDecimalOfBits( input as DecimalData ) as Toybox.Lang.Double {
 
         var long = input.long;
         var bitCountBeforeZero = 0;
@@ -171,7 +240,7 @@ module BytePacking{
             makes sure we do not miss the leading batch of zeros
             in the decimal binary
         */
-        for(var i=0; i<input.bitCount - bitCountBeforeZero; i++){
+        for(var i=0; i<input.totalBitCount - bitCountBeforeZero; i++){
             output = output / 2;
         }
 

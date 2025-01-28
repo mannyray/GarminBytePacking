@@ -55,18 +55,20 @@ module BytePacking{
         var double as Double;
         var bitsRequired as Number;
         var longEquivalent as Long;
-        var depth as Number;
+        var maxArgument as Dictionary;
         var binaryVersionOfDecimal as String;
         var binaryWithoutLeadingZeros as String;
         var truncatedValueOfBinaryInDouble as Double;
-        function initialize(doubleInput as Double, maxDepthCount as Number, bits as Number, long as Long, binaryVersionOfDecimalInput as String, binaryWithoutLeadingZerosInput as String, truncatedEquivalent as Double){
+        function initialize(doubleInput as Double, maxArg as Dictionary, bits as Number, long as Long, binaryVersionOfDecimalInput as String, binaryWithoutLeadingZerosInput as String, truncatedEquivalent as Double){
             double = doubleInput;
-            depth = maxDepthCount;
+            maxArgument = maxArg;
             bitsRequired = bits;
             longEquivalent = long;
             binaryVersionOfDecimal = binaryVersionOfDecimalInput;
             binaryWithoutLeadingZeros = binaryWithoutLeadingZerosInput;
             truncatedValueOfBinaryInDouble = truncatedEquivalent;
+            //TODO: new argument to test new maximumParamater
+            //TODO: format input to tests as dictionary for readability
         }
     }
 
@@ -82,12 +84,12 @@ module BytePacking{
         var bitCountForSign = 1;
         var bitCountForExponent = 11;
         var totalBitCount = 64;
-        var maxDepthDefault = totalBitCount-bitCountForSign-bitCountForExponent;
+        var maxDepthDefaultArg = { :maximumBits => (totalBitCount-bitCountForSign-bitCountForExponent) };
 
         var testCases = [
-            new GetBitsOfDecimal_TestCase(0.125d,maxDepthDefault,3,1l,".001","1",0.125d),
+            new GetBitsOfDecimal_TestCase(0.125d,maxDepthDefaultArg,3,1l,".001","1",0.125d),
             // test 0 case
-            new GetBitsOfDecimal_TestCase(0d,maxDepthDefault,0,0l,"_nill_","_nill_",0d),
+            new GetBitsOfDecimal_TestCase(0d,maxDepthDefaultArg,0,0l,"_nill_","_nill_",0d),
             /*
                 Running https://www.rapidtables.com/convert/number/decimal-to-binary.html?x=.12341465
                 returns 0.0001111110011000001, but then running with the output:
@@ -104,7 +106,7 @@ module BytePacking{
             */
             new GetBitsOfDecimal_TestCase(
                 0.12341465d,
-                maxDepthDefault,
+                maxDepthDefaultArg,
                 52,
                 555810171752060l,
                 "0.0001111110011000000110100011110110011000111001111100",
@@ -115,29 +117,37 @@ module BytePacking{
                 0.1 in decimal, in binary, has inifinite number of repeating binary numbers.
                 Here we test, how many binary bits do we want to extract from this infinitely repeating pattern of "0011"
             */
-            new GetBitsOfDecimal_TestCase(0.1d,10,10,102l,"0.0001100110","1100110",0.099609375d),
-            new GetBitsOfDecimal_TestCase(0.1d,20,20,104857l,"0.00011001100110011001","11001100110011001",0.09999942779541015625d),
-            new GetBitsOfDecimal_TestCase(0.1d,0,0,0l,"0.0","0",0d),
+            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBits=>10},10,102l,"0.0001100110","1100110",0.099609375d),
+            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBits=>20},20,104857l,"0.00011001100110011001","11001100110011001",0.09999942779541015625d),
+            /*
+                TODO: explanation
+            */
+            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBitsAfterFirstOne=>7},10,102l,"0.0001100110","1100110",0.099609375d),
+            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBitsAfterFirstOne=>17},20,104857l,"0.00011001100110011001","11001100110011001",0.09999942779541015625d),
+            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBitsAfterFirstOne=>0},0,0l,"0.0","0",0d),
+
+
+            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBits=>0},0,0l,"0.0","0",0d),
         ];
         for(var i=0; i<testCases.size(); i++){
 
-            var bdp =  getBitsOfDecimal(testCases[i].double,testCases[i].depth);
-            Test.assertEqualMessage(bdp.bitCount,testCases[i].bitsRequired,
+            var output =  getBitsOfDecimal(testCases[i].double,testCases[i].maxArgument );
+            Test.assertEqualMessage(output.totalBitCount,testCases[i].bitsRequired,
                 Toybox.Lang.format(
                     "Requiring $1$ bits to store $2$ (binary version: $3$), but got $4$ bits computed.",
-                    [testCases[i].bitsRequired,testCases[i].double,testCases[i].binaryVersionOfDecimal,bdp.bitCount]
+                    [testCases[i].bitsRequired,testCases[i].double,testCases[i].binaryVersionOfDecimal,output.totalBitCount]
                 )
             );
-            Test.assertEqualMessage(bdp.long,testCases[i].longEquivalent,
+            Test.assertEqualMessage(output.long,testCases[i].longEquivalent,
                 Toybox.Lang.format(
-                    "Long stored version of $1$ should be $3$ (or in binary $3$), but got $4$",
-                    [testCases[i].double,testCases[i],testCases[i].longEquivalent,bdp.long]
+                    "Long stored version of $1$ should be $3$ (or in binary $2$), but got $4$",//TODO: typo here?
+                    [testCases[i].double,testCases[i].binaryVersionOfDecimal,testCases[i].longEquivalent,output.long]
                 )
             );
-            Test.assertEqualMessage(getDecimalOfBits(bdp),testCases[i].truncatedValueOfBinaryInDouble,
+            Test.assertEqualMessage(getDecimalOfBits(output),testCases[i].truncatedValueOfBinaryInDouble,
                 Toybox.Lang.format(
                     "Truncated double version of $1$ should be $2$, but got $3$",
-                    [testCases[i].double,testCases[i].truncatedValueOfBinaryInDouble,getDecimalOfBits(bdp)]
+                    [testCases[i].double,testCases[i].truncatedValueOfBinaryInDouble,getDecimalOfBits(output)]
                 )
             );
         }
@@ -148,10 +158,10 @@ module BytePacking{
     function UtilTest_invalidInput_getBitsOfDecimal_Test(logger as Toybox.Test.Logger) as Boolean {
         var randomDepth = 10;
         try {
-            getBitsOfDecimal(0.123f,randomDepth);//supposed to be a double and a float
+            getBitsOfDecimal(0.123f,{:maximumBits => randomDepth} );//supposed to be a double and a float
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
-            var expectedErrorMessage = "Expecting Toybox.Lang.Double argument type";
+            var expectedErrorMessage = "Expecting Toybox.Lang.Double argument type as first argument";
             Test.assertMessage(
                 acquiredErrorMessage.find(expectedErrorMessage) != null,
                 "Invalid error message. Got '" +
@@ -163,10 +173,10 @@ module BytePacking{
         }
 
         try {
-            getBitsOfDecimal(1d,randomDepth);
+            getBitsOfDecimal(1d,{:maximumBits => randomDepth} );
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
-            var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1)";
+            var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1) as first argument";
             Test.assertMessage(
                 acquiredErrorMessage.find(expectedErrorMessage) != null,
                 "Invalid error message. Got '" +
@@ -178,10 +188,10 @@ module BytePacking{
         }
 
         try {
-            getBitsOfDecimal(-0.123d,randomDepth);
+            getBitsOfDecimal(-0.123d,{:maximumBits => randomDepth} );
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
-            var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1)";
+            var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1) as first argument";
             Test.assertMessage(
                 acquiredErrorMessage.find(expectedErrorMessage) != null,
                 "Invalid error message. Got '" +

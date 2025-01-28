@@ -78,10 +78,10 @@ module BytePacking{
                 if(bitsRemainingForDecimal>0){
                     var binaryStoreOfDecimalPortion = getBitsOfDecimal(
                         (input.abs() - nonnegativeIntegerPortionOfFloat).toDouble(), 
-                        bitsRemainingForDecimal
+                        {:maximumBits => bitsRemainingForDecimal}
                     );
                     //we might not be using the entire mantissa, so we shift up the decimal portion to follow right after the integer portion.
-                    decimalPortionInProperBitLocation = binaryStoreOfDecimalPortion.long << (bitsRemainingForDecimal - binaryStoreOfDecimalPortion.bitCount);
+                    decimalPortionInProperBitLocation = binaryStoreOfDecimalPortion.long << (bitsRemainingForDecimal - binaryStoreOfDecimalPortion.totalBitCount);
                     // integer bits lead the decimal bits
                     integerPortionInProperBitLocation = binaryStoreOfNonNegativeIntegerPortion.long << bitsRemainingForDecimal; 
                 }
@@ -113,7 +113,7 @@ module BytePacking{
         }
 
 
-        function byteArrayToFloat(input as Toybox.Lang.ByteArray) as Toybox.Lang.Float {
+        /*function byteArrayToFloat(input as Toybox.Lang.ByteArray) as Toybox.Lang.Float {
             // TODO assert byte array length
             var buffer = [0x00,0x00,0x00,0x00]b;
             var longEquivalent = BytePacking.Long.byteArrayToLong(buffer.addAll(input));
@@ -153,6 +153,6 @@ module BytePacking{
             }
 
             return output;
-        }
+        }*/
     }
 }
