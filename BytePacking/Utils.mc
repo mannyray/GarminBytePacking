@@ -122,6 +122,7 @@ module BytePacking{
 
         var maximumBits = optionDict.hasKey(:maximumBits) ? optionDict[:maximumBits] : 10000000; //TODO change this one more than option possible
         var maximumBitsAfterFirstOne = optionDict.hasKey(:maximumBitsAfterFirstOne) ? optionDict[:maximumBitsAfterFirstOne] : 10000000; //TODO change this one more than option possible
+        //TODO ^ naming convention to be inclusive of the first one?
 
         //TODO: maximumBits has to be a dictionary which specifies which maximum we are using
         // only one maximum can be defined in the dict: maximumOverAllBits XOR maximumBitsAfterFirstOne

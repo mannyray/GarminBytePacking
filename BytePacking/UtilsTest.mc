@@ -54,19 +54,21 @@ module BytePacking{
     class GetBitsOfDecimal_TestCase{
         var double as Double;
         var bitsRequired as Number;
+        var bitsAfterFirstOne as Number;
         var longEquivalent as Long;
         var maxArgument as Dictionary;
         var binaryVersionOfDecimal as String;
         var binaryWithoutLeadingZeros as String;
         var truncatedValueOfBinaryInDouble as Double;
-        function initialize(doubleInput as Double, maxArg as Dictionary, bits as Number, long as Long, binaryVersionOfDecimalInput as String, binaryWithoutLeadingZerosInput as String, truncatedEquivalent as Double){
-            double = doubleInput;
-            maxArgument = maxArg;
-            bitsRequired = bits;
-            longEquivalent = long;
-            binaryVersionOfDecimal = binaryVersionOfDecimalInput;
-            binaryWithoutLeadingZeros = binaryWithoutLeadingZerosInput;
-            truncatedValueOfBinaryInDouble = truncatedEquivalent;
+        function initialize(input as Dictionary){
+            double = input[:doubleInput];
+            maxArgument = input[:maxArgument];
+            bitsRequired = input[:bitsRequired];
+            bitsAfterFirstOne = input[:bitsAfterFirstOne];
+            longEquivalent = input[:longEquivalent];
+            binaryVersionOfDecimal = input[:binaryVersionOfDecimal];
+            binaryWithoutLeadingZeros = input[:binaryWithoutLeadingZeros];
+            truncatedValueOfBinaryInDouble = input[:truncatedValueOfBinaryInDouble];
             //TODO: new argument to test new maximumParamater
             //TODO: format input to tests as dictionary for readability
         }
@@ -87,9 +89,29 @@ module BytePacking{
         var maxDepthDefaultArg = { :maximumBits => (totalBitCount-bitCountForSign-bitCountForExponent) };
 
         var testCases = [
-            new GetBitsOfDecimal_TestCase(0.125d,maxDepthDefaultArg,3,1l,".001","1",0.125d),
+            new GetBitsOfDecimal_TestCase(
+                {
+                    :doubleInput=>0.125d,
+                    :maxArgument=>maxDepthDefaultArg,
+                    :bitsRequired=>3,
+                    :bitsAfterFirstOne=>1,
+                    :longEquivalent=>1l,
+                    :binaryVersionOfDecimal=>".001",
+                    :binaryWithoutLeadingZeros=>"1",
+                    :truncatedValueOfBinaryInDouble=>0.125d
+                }),
             // test 0 case
-            new GetBitsOfDecimal_TestCase(0d,maxDepthDefaultArg,0,0l,"_nill_","_nill_",0d),
+            new GetBitsOfDecimal_TestCase(
+                {
+                    :doubleInput=>0d,
+                    :maxArgument=>maxDepthDefaultArg,
+                    :bitsRequired=>0,
+                    :bitsAfterFirstOne=>0,
+                    :longEquivalent=>0l,
+                    :binaryVersionOfDecimal=>"_nill_",
+                    :binaryWithoutLeadingZeros=>"_nill_",
+                    :truncatedValueOfBinaryInDouble=>0d
+                }),
             /*
                 Running https://www.rapidtables.com/convert/number/decimal-to-binary.html?x=.12341465
                 returns 0.0001111110011000001, but then running with the output:
@@ -105,29 +127,75 @@ module BytePacking{
 
             */
             new GetBitsOfDecimal_TestCase(
-                0.12341465d,
-                maxDepthDefaultArg,
-                52,
-                555810171752060l,
-                "0.0001111110011000000110100011110110011000111001111100",
-                "1111110011000000110100011110110011000111001111100",
-                0.12341464999999995911d
-            ),
+                {
+                    :doubleInput=>0.12341465d,
+                    :maxArgument=>maxDepthDefaultArg,
+                    :bitsRequired=>52,
+                    :bitsAfterFirstOne=>49,
+                    :longEquivalent=>555810171752060l,
+                    :binaryVersionOfDecimal=>"0.0001111110011000000110100011110110011000111001111100",
+                    :binaryWithoutLeadingZeros=>"1111110011000000110100011110110011000111001111100",
+                    :truncatedValueOfBinaryInDouble=>0.12341464999999995911d
+            }),
             /*
                 0.1 in decimal, in binary, has inifinite number of repeating binary numbers.
                 Here we test, how many binary bits do we want to extract from this infinitely repeating pattern of "0011"
             */
-            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBits=>10},10,102l,"0.0001100110","1100110",0.099609375d),
-            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBits=>20},20,104857l,"0.00011001100110011001","11001100110011001",0.09999942779541015625d),
+            new GetBitsOfDecimal_TestCase(
+                  {
+                    :doubleInput=>0.1d,
+                    :maxArgument=>{:maximumBits=>10},
+                    :bitsRequired=>10,
+                    :bitsAfterFirstOne=>7,
+                    :longEquivalent=>102l,
+                    :binaryVersionOfDecimal=>"0.0001100110",
+                    :binaryWithoutLeadingZeros=>"1100110",
+                    :truncatedValueOfBinaryInDouble=>0.099609375d
+            }),
+            new GetBitsOfDecimal_TestCase({
+                    :doubleInput=>0.1d,
+                    :maxArgument=>{:maximumBits=>20},
+                    :bitsRequired=>20,
+                    :bitsAfterFirstOne=>17,
+                    :longEquivalent=>104857l,
+                    :binaryVersionOfDecimal=>"0.00011001100110011001",
+                    :binaryWithoutLeadingZeros=>"11001100110011001",
+                    :truncatedValueOfBinaryInDouble=>0.09999942779541015625d
+            }),
             /*
                 TODO: explanation
             */
-            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBitsAfterFirstOne=>7},10,102l,"0.0001100110","1100110",0.099609375d),
-            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBitsAfterFirstOne=>17},20,104857l,"0.00011001100110011001","11001100110011001",0.09999942779541015625d),
-            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBitsAfterFirstOne=>0},0,0l,"0.0","0",0d),
+            new GetBitsOfDecimal_TestCase({
+                    :doubleInput=>0.1d,
+                    :maxArgument=>{:maximumBitsAfterFirstOne=>7},
+                    :bitsRequired=>10,
+                    :bitsAfterFirstOne=>7,
+                    :longEquivalent=>102l,
+                    :binaryVersionOfDecimal=>"0.0001100110",
+                    :binaryWithoutLeadingZeros=>"1100110",
+                    :truncatedValueOfBinaryInDouble=>0.099609375d
+            }),            
+            new GetBitsOfDecimal_TestCase({
+                    :doubleInput=>0.1d,
+                    :maxArgument=>{:maximumBitsAfterFirstOne=>17},
+                    :bitsRequired=>20,
+                    :bitsAfterFirstOne=>17,
+                    :longEquivalent=>104857l,
+                    :binaryVersionOfDecimal=>"0.00011001100110011001",
+                    :binaryWithoutLeadingZeros=>"11001100110011001",
+                    :truncatedValueOfBinaryInDouble=>0.09999942779541015625d
+            }), 
+            new GetBitsOfDecimal_TestCase({
+                    :doubleInput=>0.1d,
+                    :maxArgument=>{:maximumBitsAfterFirstOne=>0},
+                    :bitsRequired=>0,
+                    :bitsAfterFirstOne=>0,
+                    :longEquivalent=>0l,
+                    :binaryVersionOfDecimal=>"0.0",
+                    :binaryWithoutLeadingZeros=>"0",
+                    :truncatedValueOfBinaryInDouble=>0d
+            }), 
 
-
-            new GetBitsOfDecimal_TestCase(0.1d,{:maximumBits=>0},0,0l,"0.0","0",0d),
         ];
         for(var i=0; i<testCases.size(); i++){
 
@@ -148,6 +216,12 @@ module BytePacking{
                 Toybox.Lang.format(
                     "Truncated double version of $1$ should be $2$, but got $3$",
                     [testCases[i].double,testCases[i].truncatedValueOfBinaryInDouble,getDecimalOfBits(output)]
+                )
+            );
+            Test.assertEqualMessage(output.bitCountAfterFirstOne,testCases[i].bitsAfterFirstOne,
+                Toybox.Lang.format(
+                    "Truncated version of $1$ should has $2$ bits after first one, but got $3$ for the binary decimal $4$",
+                    [testCases[i].truncatedValueOfBinaryInDouble,testCases[i].bitsAfterFirstOne,output.bitCountAfterFirstOne,testCases[i].binaryVersionOfDecimal]
                 )
             );
         }
