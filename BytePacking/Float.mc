@@ -30,6 +30,11 @@ module BytePacking{
 
             var longEquivalentInBitsOfFloat = 0l;
 
+            if( input.toDouble() == 0){
+                // TODO: clean up
+                return [0x00,0x00,0x00,0x00]b;
+            }
+
             
             var nonnegativeIntegerPortionOfFloat = input.abs().toLong();
 
@@ -93,12 +98,62 @@ module BytePacking{
                 longEquivalentInBitsOfFloat = exponentValueInProperBitLocation | integerPortionInProperBitLocation | decimalPortionInProperBitLocation;
             }
             else{
+                // We are allowed to use all mantissa bits for the decimal portion
+                
+                //plus one because the first bit is "free" or "implicit" in IEEE 754 notation
+                var decimalData = getBitsOfDecimal(input.abs().toDouble(), {:maximumBitsAfterFirstOne => BITS_IN_FLOAT_MANTISSA+1});
+                var decimalPortionInProperBitLocation = decimalData.long;
+
                 /*
-                    var binaryStoreOfDecimalPortion = getBitsOfDecimal(
-                        (input.abs() - nonnegativeIntegerPortionOfFloat).toDouble(), 
-                        bitsRemainingForDecimal
-                    );
+                    Say our binary decimal is "0.0010101" which means we need totalBitCount is 7 (numbers to the right of ".")
+                    while bitCountAfterFirstOne is 5 (to store the tailing "10101"). This can be summarized
+                    as "10101.0" * 2^{-7} or (where the "101" is in binary - each -1 in exponent shifts to the right one)
+                    or as "1.0101" * 2^{-3} (where -3 is the leaps to get the number so that leading "1" is to left of the ".")
+                    we compute, aka "exponentValue" (e.g. -3), as the number of zeros till the leading one in "0.0010101"
+                    which is (decimalData.bitCountAfterFirstOne - decimalData.totalBitCount) and then subtract the
+                    additional -1 to get the leading one "1" over the "."
                 */
+                var exponentValue = decimalData.bitCountAfterFirstOne - decimalData.totalBitCount-1;
+
+                System.println("Bit after one "+decimalData.bitCountAfterFirstOne);
+                System.println("total bit "+decimalData.totalBitCount);
+                System.println("exponent value "+ exponentValue);
+
+                System.println("herehere");
+                if(decimalData.bitCountAfterFirstOne == 0){
+                    //the number is zero - do nothing
+                }
+                else if(decimalData.bitCountAfterFirstOne > BITS_IN_FLOAT_MANTISSA+1){
+                    System.println("way 1");
+                    /*
+                        more data than can fit in the mantissa portion - the bitCountAfterFirstOne is too big
+                        so we down shift the tail end of the number and lose a little bit of precision
+                        we do the "minus one", because the leading one is "Free" in IEEE 754 notation
+                        so if bitCountAfterFirstOne is one over the MANTISSA length, we don't actually
+                        have to shift
+                    */
+                    var shift = ((decimalData.bitCountAfterFirstOne - BITS_IN_FLOAT_MANTISSA)-1);
+                    decimalPortionInProperBitLocation = decimalPortionInProperBitLocation >> shift;
+                }
+                else if(decimalData.bitCountAfterFirstOne <= BITS_IN_FLOAT_MANTISSA){
+                    System.println("way 2");
+                    /*
+                        the digits required to store the decimal portion are way smaller than the permitted 
+                        in MANTISSA. To account for this we just left shift all the value and the tail end
+                        will be padded with zeros. We add the plus one, because the leading one is "Free"
+                        in IEEE 754 notation.
+                    */
+                    var shift = (BITS_IN_FLOAT_MANTISSA - decimalData.bitCountAfterFirstOne)+1;
+                    decimalPortionInProperBitLocation = decimalPortionInProperBitLocation << shift;
+                }
+                
+                //This makes sure the space reserved for exponent and sign bit are all 0s including the "free" leading one of the mantissa portion
+                //32 because we are manipulating longs which are 64 bits long, while we are only working the tail 32 bits
+                decimalPortionInProperBitLocation = decimalPortionInProperBitLocation && longWithFirstNBitsZero(32+BITS_IN_FLOAT_EXPONENT + 1);
+
+                System.println("exponent just before "+(exponentValue + FLOAT_EXPONENT_BIAS).toLong());
+                var exponentValueInProperBitLocation = (exponentValue + FLOAT_EXPONENT_BIAS).toLong() << BITS_IN_FLOAT_MANTISSA;
+                longEquivalentInBitsOfFloat = exponentValueInProperBitLocation | decimalPortionInProperBitLocation;
             }
 
             if(isNegative){

@@ -194,7 +194,8 @@ module BytePacking{
                     :binaryVersionOfDecimal=>"0.0",
                     :binaryWithoutLeadingZeros=>"0",
                     :truncatedValueOfBinaryInDouble=>0d
-            }), 
+            }),
+            //TODO: test case that highlights the difference between maxbits to maxbitsafterfirstone
 
         ];
         for(var i=0; i<testCases.size(); i++){
