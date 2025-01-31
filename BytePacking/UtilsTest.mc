@@ -337,4 +337,31 @@ module BytePacking{
         );
         return true;
     }
+
+    (:test)
+    function UtilTest_getBitsOfFloor_basicTest(logger as Toybox.Test.Logger) as Boolean {
+        /*
+         70466797557557426969903104.0
+         which in float's IEEE 754 binary is
+         0 11010100 11010010010011110110011
+
+         If we were to convert to a standard binary (without IEEE 754's exponent section), then the binary would be
+         111010010010011110110011, followed by 62 "0"s for a total of 86 binary digits
+
+         which means our FloorData should mention that the number is a total of 86 bits, with 24 bits for the part before
+         all the zero's and that the long equivalent (of the 24 bits) is 15280051
+        */
+
+        /*
+            casting to double is fine as any number that can be represented by float can be represented by double
+            https://stackoverflow.com/questions/259015/can-every-float-be-expressed-exactly-as-a-double
+        */
+        var output = getBitsOfFloor(70466797557557426969903104.0d);
+        Test.assert(output.totalBitCount == 86);
+        Test.assertMessage(output.bitsAfterFirsttOne == 24,""+output.bitsAfterFirsttOne);
+        Test.assertMessage(output.long == 15280051, ""+output.long );
+        return true;
+    }
+
+
 }

@@ -1,5 +1,6 @@
 import Toybox.Lang;
 import Toybox.System;
+import Toybox.Math;
 
 module BytePacking{
 
@@ -12,7 +13,7 @@ module BytePacking{
 
     class Float extends Toybox.Lang.Float{
 
-        hidden const BITS_IN_FLOAT_EXPONENT = 8;
+        hidden const BITS_IN_FLOAT_EXPONENT = 8;//TODO make this as some sort of argument in order to generalize between floats and double
         hidden const BITS_IN_FLOAT_MANTISSA = 23;
         hidden const FLOAT_EXPONENT_BIAS = 127;
 
@@ -36,7 +37,7 @@ module BytePacking{
             }
 
             
-            var nonnegativeIntegerPortionOfFloat = input.abs().toLong();
+            var nonnegativeIntegerPortionOfFloat = Math.floor(input.abs());
 
             if(nonnegativeIntegerPortionOfFloat > 0){//TODO: explain our if statement here
                 /*
@@ -44,7 +45,7 @@ module BytePacking{
                     thus integerPortion is binary "101" (i.e. 5)
                     which BinaryDataPair stores as long=5,bitCount=3
                 */
-                var binaryStoreOfNonNegativeIntegerPortion = new BinaryDataPair(nonnegativeIntegerPortionOfFloat);
+                var binaryStoreOfNonNegativeIntegerPortion = getBitsOfFloor(nonnegativeIntegerPortionOfFloat.toDouble());
 
                 /*
                     the BinaryDataPair stores it as bitCount=3, but we subtract one as in float IEEE-754 representation, 
@@ -53,25 +54,26 @@ module BytePacking{
                 
                 // "101" in binary gets the leading one removed so becomes "1" so the long value becomes 1 in decimal
                 //System.println("before " + binaryStoreOfNonNegativeIntegerPortion.long);
-                binaryStoreOfNonNegativeIntegerPortion.long = binaryStoreOfNonNegativeIntegerPortion.long & longWithFirstNBitsZero(BITS_IN_LONG - binaryStoreOfNonNegativeIntegerPortion.bitCount+1);
+                binaryStoreOfNonNegativeIntegerPortion.long = binaryStoreOfNonNegativeIntegerPortion.long & longWithFirstNBitsZero(BITS_IN_LONG - binaryStoreOfNonNegativeIntegerPortion.bitsAfterFirsttOne+1);
                 //System.println("after " + binaryStoreOfNonNegativeIntegerPortion.long);
                 //by removing the "1", we adjust bit count
-                binaryStoreOfNonNegativeIntegerPortion.bitCount--;
+                binaryStoreOfNonNegativeIntegerPortion.bitsAfterFirsttOne--;//TODO: better explanation
+                binaryStoreOfNonNegativeIntegerPortion.totalBitCount--;
                 
                 // Bias is a property of the IEEE 754 standard. 
                 // our number "101.001" becomes represented as ".01001" * 2^binaryStoreOfNonNegativeIntegerPortion.bitCount = ".01001" * 2^2
                 // with the leading "1" being implicit. 2^2 is two bit shifts to the left which would give us back "101.001"
-                var exponentValue = FLOAT_EXPONENT_BIAS + binaryStoreOfNonNegativeIntegerPortion.bitCount;
+                var exponentValue = FLOAT_EXPONENT_BIAS + binaryStoreOfNonNegativeIntegerPortion.totalBitCount; // TODO: changed now
                 var exponentValueInProperBitLocation = exponentValue.toLong() << BITS_IN_FLOAT_MANTISSA;
 
 
                 //System.println("integer portion " + binaryStoreOfNonNegativeIntegerPortion.bitCount);
                 // the rest of the decimal part (e.g. "0.001" or 0.125 in decimal) gets to take up the remaining part of the MANTISSA
-                var bitsRemainingForDecimal = BITS_IN_FLOAT_MANTISSA - binaryStoreOfNonNegativeIntegerPortion.bitCount;
+                var bitsRemainingForDecimal = BITS_IN_FLOAT_MANTISSA - binaryStoreOfNonNegativeIntegerPortion.bitsAfterFirsttOne;
                 //System.println("bitsRemainingForDecimal" + bitsRemainingForDecimal);
                 /*
                     now we store the decimal in long format via BinaryDataPair which will be easier for us to manipulate later on
-                    "0.001" in binary will be stored in BinaryDataPair as long=1,bitCount=3
+                    "0.001" in binary will be stored in BinaryDataPair as long=1,bitCount=3 TODO: rename
                 
                     getBitsOfDecimal takes in Doubles, so we cast to Double. This is fine as based on bit structure of a float
                     it can be accurately represented by a double which has a similar bit structure
@@ -122,8 +124,9 @@ module BytePacking{
                 System.println("herehere");
                 if(decimalData.bitCountAfterFirstOne == 0){
                     //the number is zero - do nothing
+                    // TODO: clean this up
                 }
-                else if(decimalData.bitCountAfterFirstOne > BITS_IN_FLOAT_MANTISSA+1){
+                else if(decimalData.bitCountAfterFirstOne > BITS_IN_FLOAT_MANTISSA+1){//TODO should this even ever happen given {:maximumBitsAfterFirstOne => BITS_IN_FLOAT_MANTISSA+1}?
                     System.println("way 1");
                     /*
                         more data than can fit in the mantissa portion - the bitCountAfterFirstOne is too big
@@ -135,8 +138,9 @@ module BytePacking{
                     var shift = ((decimalData.bitCountAfterFirstOne - BITS_IN_FLOAT_MANTISSA)-1);
                     decimalPortionInProperBitLocation = decimalPortionInProperBitLocation >> shift;
                 }
-                else if(decimalData.bitCountAfterFirstOne <= BITS_IN_FLOAT_MANTISSA){
-                    System.println("way 2");
+                else if(decimalData.bitCountAfterFirstOne < BITS_IN_FLOAT_MANTISSA+1){//TODO: subnormal numbers
+                    System.println(decimalData.long);
+                    System.println("way 2 " + decimalData.bitCountAfterFirstOne);
                     /*
                         the digits required to store the decimal portion are way smaller than the permitted 
                         in MANTISSA. To account for this we just left shift all the value and the tail end
@@ -145,6 +149,7 @@ module BytePacking{
                     */
                     var shift = (BITS_IN_FLOAT_MANTISSA - decimalData.bitCountAfterFirstOne)+1;
                     decimalPortionInProperBitLocation = decimalPortionInProperBitLocation << shift;
+                    System.println(decimalPortionInProperBitLocation);
                 }
                 
                 //This makes sure the space reserved for exponent and sign bit are all 0s including the "free" leading one of the mantissa portion
@@ -164,7 +169,7 @@ module BytePacking{
                 However, long is 64 bits while float is 32 in our long the float portion is stored in the second half
                 which is why we return the slice (i.e. second half of the byte array)
             */
-            return BytePacking.Long.longToByteArray(longEquivalentInBitsOfFloat).slice(4,null);
+            return BytePacking.Long.longToByteArray(longEquivalentInBitsOfFloat).slice(BytePacking.BYTES_IN_FLOAT,null);
         }
 
 

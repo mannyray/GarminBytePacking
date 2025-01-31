@@ -49,9 +49,7 @@ module BytePacking{
     (:test)
     function FloatTest_basicTest(logger as Toybox.Test.Logger) as Boolean {
         System.println(" TEST TEST "  + (0xFF));
-        if(1==1){
-            return true;
-        }
+
 
         /*
         if(1 == 1){
@@ -73,8 +71,8 @@ module BytePacking{
         var startingNumber = 1065353216l;
         var originalPercentage = startingNumber.toDouble()/maxSignedInteger.toDouble();
         var startTime = System.getTimer();
-        var approach = 3;
-        if(approach != 3){
+        var approach = 4;
+        if(approach == 1 or approach == 2){
             for(var i=startingNumber; i<maxSignedInteger; i+=1){
                 var currentPercentage = i.toDouble()/maxSignedInteger.toDouble();
                 if((currentPercentage - originalPercentage)>0.00001){
@@ -117,7 +115,7 @@ module BytePacking{
                 }
             }
         }
-        else{
+        else if(approach == 3){
             var counter = 0;
             var signs = [0,1];
             for( var signIndex=0; signIndex<signs.size(); signIndex++){
@@ -138,6 +136,21 @@ module BytePacking{
                 }
             }
         }
+        else if(approach == 4){
+            Math.srand(0);
+            var counter = 0;
+            while(counter < 1000){
+                counter = counter + 1;
+                var number = BytePacking.Long.longToByteArray( Math.rand().toLong() ).slice(4,null).decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG});
+                System.println("test number "+number);
+                testTwoWayASingleFloat(number);
+            }
+        }
         return true;
     }
 }
+
+/*
+70466797557557426969903104.000000
+long version 9223372036854775807
+*/

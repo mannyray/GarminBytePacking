@@ -1,4 +1,5 @@
 import Toybox.System;
+import Toybox.Math;
 
 
 module BytePacking{
@@ -48,6 +49,68 @@ module BytePacking{
         }
     }
 
+    class FloorData{
+        var long as Toybox.Lang.Long;
+        var totalBitCount as Toybox.Lang.Number;
+        var bitsAfterFirsttOne as Toybox.Lang.Number;
+        function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){//TODO rename arguments or class variable names?
+            long = l;
+            totalBitCount = lbc;
+            bitsAfterFirsttOne = bcafo;
+        }
+    }
+
+
+    function getBitsOfFloor(input as Toybox.Lang.Double){
+        // TODO: input handling
+        if(!(input instanceof Toybox.Lang.Double) ){ // TODO: test
+            /*
+                Necessary, to avoid unexpected behaviour if user supplies a Number for example.
+            */
+            throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Double argument type as argument",null,null);
+        }
+        if(Math.floor(input) - input != 0 ){
+            throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double without anything after the '.'");
+        }
+        if(input < 0 ){
+            throw new Toybox.Lang.InvalidValueException("Expecting a greater than zero Toybox.Lang.Double");
+        }
+
+        var totalBitCount = 0;
+        var inputCopy = input;
+        var bitsSinceFirstOne = 0;// in a float or double will be limited by mantissa length
+        var longEquivalent = 0l;
+        var firstOne = longWithFirstNBitsOne(1);//'inverse' becase regular one has the just the last bit as 1 unlike here
+        var firstZero = longWithFirstNBitsZero(1);
+        
+        while(inputCopy != 0){//TODO: add examples, explain how it is simliar but different to getBitsOfDecimal
+            inputCopy = inputCopy / 2d;
+            var remainder = inputCopy - Math.floor(inputCopy);
+            longEquivalent  = longEquivalent >> 1;
+            longEquivalent = firstZero & longEquivalent;//TODO: why otherwise a bug
+
+            if(bitsSinceFirstOne>0){
+                bitsSinceFirstOne++;
+            }
+            
+            if(remainder > 0){
+                inputCopy = inputCopy - remainder;
+                longEquivalent = longEquivalent | firstOne;
+                if(bitsSinceFirstOne==0){
+                    bitsSinceFirstOne++;
+                }
+            }
+
+            totalBitCount++;
+        }
+        // TODO: explanation via example
+
+        longEquivalent = longEquivalent >> 1;
+        longEquivalent = longEquivalent & firstZero;
+
+        longEquivalent = longEquivalent >> ( BytePacking.BITS_IN_LONG - bitsSinceFirstOne -1 );
+        return new FloorData(longEquivalent, totalBitCount, bitsSinceFirstOne);
+    }
 
     class DecimalData{
         var long as Toybox.Lang.Long;
@@ -65,7 +128,7 @@ module BytePacking{
         amount of binary bits required to store it. The equivalent of 0.1875 in "decimal" binary is
         "0.0011" (i.e. 0*2^{-1} + 0*2^{-2} + 1*2^{-3} + 1*2^{-4}= 0.1875). In Long format, we can't store the first
         two zeros so we say the long representation of this is the number 3 (of the binary 
-        "11") while the first two zero bits will implicit and encoded as part of the BinaryDataPair object's
+        "11") while the first two zero bits will implicit and encoded as part of the BinaryDataPair object's TODO:BinaryDataPair no longer used
         bitCount which will be set to 4 in this instance (two for the first two zeros and two for the "11").
 
         maximumBits is useful for us to restrict how many binary bits we want to compute as some binary 
