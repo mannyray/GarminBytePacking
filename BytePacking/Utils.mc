@@ -8,10 +8,10 @@ module BytePacking{
         Class used for determining and storing how many bits are required
         to store a long.
 
-        Class can also be used to encode a decimal (see getBitsOfDecimal and getDecimalOfBits)
-
+        Example: 50l ("l" to mean its a long number and not a regular number in monkey c notation)
+        is represented as "110010" which means the number requires 6 bits to store.
     */
-    class BinaryDataPair { //TODO: of long, of decimal methods? some sort of private constructor approach with static methods?
+    class BinaryDataPair {
         var long as Toybox.Lang.Long;
         var bitCount as Toybox.Lang.Number;
         function initialize(input as Toybox.Lang.Long){
@@ -49,67 +49,114 @@ module BytePacking{
         }
     }
 
+    /*
+        Class used for determining and storing how many bits are required
+        to store the positive integer portion of a double.
+
+        Example: -4936.120 has the positive integer portion as 4936
+        which can be stored as 1001101001000
+
+        Therefore, the totalBitCount is 13, while bitCountBeforeAllZeros is 10
+        for the 1001101001 portion before the three trailing zeros in 1001101001000.
+
+        The long member of FloorData stores the portion before all zeros 1001101001 which represents 617. 
+
+        The reason we track all the trailing zeros and compact the number 4936 to 617 (with the knowledge of bitCountBeforeAllZeros being 3  )
+        is because of the following example:
+
+        Consider the double 1.7014118e38 which is equivalent to 2^{127} which in regular binary is a "1", followed by 126 binary zeros.
+        While this number can be compactly stored in float/double's IEEE 754 format easily, (01111111000000000000000000000000 according to https://www.h-schmidt.net/FloatConverter/IEEE754.html),
+        requiring 32 bits, long can only store a maximum number of 2,147,483,647 ( way less than 2^{127}) as it uses regular binary format. However,
+        we can store long member of FloorData as decimal "1" (equivalent to binary "1") while setting bitCountBeforeAllZeros to be 126.
+
+        Therefore, we can convert all positive integer portions of a double to FloorData format as the maximum bits in a long is 64 while the mantissa portion in a double
+        is 52 bits.
+    */
     class FloorData{
-        var long as Toybox.Lang.Long;
-        var totalBitCount as Toybox.Lang.Number;
-        var bitCountBeforeAllZeros as Toybox.Lang.Number;
-        function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcbaz as Toybox.Lang.Number){//TODO rename arguments or class variable names?
-            long = l;
-            totalBitCount = lbc;
-            bitCountBeforeAllZeros = bcbaz;
-        }
-    }
-
-
-    function getBitsOfFloor(input as Toybox.Lang.Double){
-        // TODO: input handling
-        if(!(input instanceof Toybox.Lang.Double) ){ // TODO: test
-            /*
-                Necessary, to avoid unexpected behaviour if user supplies a Number for example.
-            */
-            throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Double argument type as argument",null,null);
-        }
-        if(Math.floor(input) - input != 0 ){
-            throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double without anything after the '.'");
-        }
-        if(input < 0 ){
-            throw new Toybox.Lang.InvalidValueException("Expecting a greater than zero Toybox.Lang.Double");
+        private var _long as Toybox.Lang.Long;
+        private var _totalBitCount as Toybox.Lang.Number;
+        private var _bitCountBeforeAllZeros as Toybox.Lang.Number;
+        private function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcbaz as Toybox.Lang.Number){
+            _totalBitCount = lbc;
+            _long = l;
+            _bitCountBeforeAllZeros = bcbaz;
         }
 
-        var totalBitCount = 0;
-        var inputCopy = input;
-        var bitsSinceFirstOne = 0;// in a float or double will be limited by mantissa length
-        var longEquivalent = 0l;
-        var firstOne = longWithFirstNBitsOne(1);//'inverse' becase regular one has the just the last bit as 1 unlike here
-        var firstZero = longWithFirstNBitsZero(1);
+        function getLongEquivalent() as Toybox.Lang.Long{
+            return _long;
+        }
+
+        function getTotalBitCount() as Toybox.Lang.Number{
+            return _totalBitCount;
+        }
+
+        function getBitCountBeforeTrailingZeros() as Toybox.Lang.Number{
+            return _bitCountBeforeAllZeros;
+        }
+
+        function getTrailingZeroCount() as Toybox.Lang.Number{
+            return _totalBitCount - _bitCountBeforeAllZeros;
+        }
+
+        function removeLeadingBit() as Void{
+            //TODO: explain and test.
+            //TODO: off by one, edge case
+            //TODO: edge case of calling this multiple times not skipping the zero
+            _long = _long & longWithFirstNBitsZero(BITS_IN_LONG - _bitCountBeforeAllZeros+1);
+            _bitCountBeforeAllZeros--;
+            _totalBitCount--;
+        }
         
-        while(inputCopy != 0){//TODO: add examples, explain how it is simliar but different to getBitsOfDecimal
-            inputCopy = inputCopy / 2d;
-            var remainder = inputCopy - Math.floor(inputCopy);
-            longEquivalent  = longEquivalent >> 1;
-            longEquivalent = firstZero & longEquivalent;//TODO: why otherwise a bug
-
-            if(bitsSinceFirstOne>0){
-                bitsSinceFirstOne++;
+        static function getBitsOfFloor(input as Toybox.Lang.Double) as FloorData {
+            // TODO: input handling
+            if(!(input instanceof Toybox.Lang.Double) ){ // TODO: test
+                /*
+                    Necessary, to avoid unexpected behaviour if user supplies a Number for example.
+                */
+                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Double argument type as argument",null,null);
             }
+            if(Math.floor(input) - input != 0 ){
+                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double without anything after the '.'");
+            }
+            if(input < 0 ){
+                throw new Toybox.Lang.InvalidValueException("Expecting a greater than zero Toybox.Lang.Double");
+            }
+
+            var totalBitCountInNumber = 0;
+            var inputCopy = input;
+            var bitsSinceFirstOne = 0;// in a float or double will be limited by mantissa length
+            var longEquivalent = 0l;
+            var firstOne = longWithFirstNBitsOne(1);//'inverse' becase regular one has the just the last bit as 1 unlike here
+            var firstZero = longWithFirstNBitsZero(1);
             
-            if(remainder > 0){
-                inputCopy = inputCopy - remainder;
-                longEquivalent = longEquivalent | firstOne;
-                if(bitsSinceFirstOne==0){
-                    bitsSinceFirstOne++;//bitsBeforeAllZeros
+            while(inputCopy != 0){//TODO: add examples, explain how it is simliar but different to getBitsOfDecimal
+                inputCopy = inputCopy / 2d;
+                var remainder = inputCopy - Math.floor(inputCopy);
+                longEquivalent  = longEquivalent >> 1;
+                longEquivalent = firstZero & longEquivalent;//TODO: why otherwise a bug
+
+                if(bitsSinceFirstOne>0){
+                    bitsSinceFirstOne++;
                 }
+                
+                if(remainder > 0){
+                    inputCopy = inputCopy - remainder;
+                    longEquivalent = longEquivalent | firstOne;
+                    if(bitsSinceFirstOne==0){
+                        bitsSinceFirstOne++;//bitsBeforeAllZeros
+                    }
+                }
+
+                totalBitCountInNumber++;
             }
+            // TODO: explanation via example
 
-            totalBitCount++;
+            longEquivalent = longEquivalent >> 1;
+            longEquivalent = longEquivalent & firstZero;
+
+            longEquivalent = longEquivalent >> ( BytePacking.BITS_IN_LONG - bitsSinceFirstOne -1 );
+            return new FloorData(longEquivalent, totalBitCountInNumber, bitsSinceFirstOne);
         }
-        // TODO: explanation via example
-
-        longEquivalent = longEquivalent >> 1;
-        longEquivalent = longEquivalent & firstZero;
-
-        longEquivalent = longEquivalent >> ( BytePacking.BITS_IN_LONG - bitsSinceFirstOne -1 );
-        return new FloorData(longEquivalent, totalBitCount, bitsSinceFirstOne);
     }
 
     class DecimalData{
@@ -329,7 +376,7 @@ module BytePacking{
     }
 
     /*
-        Return a long where the first N bits are binary "01" and the rest are binary "1"
+        Return a long where the first N bits are binary "0" and the rest are binary "1"
     */
     function longWithFirstNBitsZero(bitCount as Toybox.Lang.Number) as Toybox.Lang.Long{
         if(bitCount < 0 or bitCount > BITS_IN_LONG or !(bitCount instanceof Toybox.Lang.Number)){

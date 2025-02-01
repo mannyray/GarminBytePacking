@@ -356,20 +356,18 @@ module BytePacking{
             casting to double is fine as any number that can be represented by float can be represented by double
             https://stackoverflow.com/questions/259015/can-every-float-be-expressed-exactly-as-a-double
         */
-        var output = getBitsOfFloor(70466797557557426969903104.0d);
-        Test.assert(output.totalBitCount == 86);
-        Test.assertMessage(output.bitCountBeforeAllZeros == 24,""+output.bitCountBeforeAllZeros);
-        Test.assertMessage(output.long == 15280051, ""+output.long );
+        var output = FloorData.getBitsOfFloor(70466797557557426969903104.0d);
+        Test.assert(output.getTotalBitCount() == 86);
+        Test.assert(output.getBitCountBeforeTrailingZeros() == 24);
+        Test.assert(output.getLongEquivalent() == 15280051l );
+        Test.assert(output.getTrailingZeroCount() == 62);
 
-
-        output = getBitsOfFloor(2.0d);
-        Test.assert(output.totalBitCount == 2);
-        Test.assertMessage(output.bitCountBeforeAllZeros == 1,""+output.bitCountBeforeAllZeros);
-        Test.assertMessage(output.long == 1, ""+output.long );
-
+        output = FloorData.getBitsOfFloor(2.0d);
+        Test.assert(output.getTotalBitCount() == 2);
+        Test.assert(output.getBitCountBeforeTrailingZeros() == 1);
+        Test.assert(output.getLongEquivalent() == 1 );
+        Test.assert(output.getTrailingZeroCount() == 1);
 
         return true;
     }
-
-
 }
