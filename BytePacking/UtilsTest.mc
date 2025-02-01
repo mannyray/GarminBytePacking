@@ -358,8 +358,16 @@ module BytePacking{
         */
         var output = getBitsOfFloor(70466797557557426969903104.0d);
         Test.assert(output.totalBitCount == 86);
-        Test.assertMessage(output.bitsAfterFirsttOne == 24,""+output.bitsAfterFirsttOne);
+        Test.assertMessage(output.bitCountBeforeAllZeros == 24,""+output.bitCountBeforeAllZeros);
         Test.assertMessage(output.long == 15280051, ""+output.long );
+
+
+        output = getBitsOfFloor(2.0d);
+        Test.assert(output.totalBitCount == 2);
+        Test.assertMessage(output.bitCountBeforeAllZeros == 1,""+output.bitCountBeforeAllZeros);
+        Test.assertMessage(output.long == 1, ""+output.long );
+
+
         return true;
     }
 

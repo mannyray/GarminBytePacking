@@ -90,7 +90,7 @@ module BytePacking{
                 /*
                     using logical OR operator (|), we can combine the various bytes together
 
-                    We byte array's value to Long to the reverse reason as to why we convert to 
+                    We convert byte array's value to Long for the reverse reason as to why we convert to 
                     toNumber() in "longToByteArray" above.
                 */
                 output = output | ( input[arrayIndex].toLong()  << offset);

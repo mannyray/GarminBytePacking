@@ -52,11 +52,11 @@ module BytePacking{
     class FloorData{
         var long as Toybox.Lang.Long;
         var totalBitCount as Toybox.Lang.Number;
-        var bitsAfterFirsttOne as Toybox.Lang.Number;
-        function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){//TODO rename arguments or class variable names?
+        var bitCountBeforeAllZeros as Toybox.Lang.Number;
+        function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcbaz as Toybox.Lang.Number){//TODO rename arguments or class variable names?
             long = l;
             totalBitCount = lbc;
-            bitsAfterFirsttOne = bcafo;
+            bitCountBeforeAllZeros = bcbaz;
         }
     }
 
@@ -97,7 +97,7 @@ module BytePacking{
                 inputCopy = inputCopy - remainder;
                 longEquivalent = longEquivalent | firstOne;
                 if(bitsSinceFirstOne==0){
-                    bitsSinceFirstOne++;
+                    bitsSinceFirstOne++;//bitsBeforeAllZeros
                 }
             }
 

@@ -54,10 +54,10 @@ module BytePacking{
                 
                 // "101" in binary gets the leading one removed so becomes "1" so the long value becomes 1 in decimal
                 //System.println("before " + binaryStoreOfNonNegativeIntegerPortion.long);
-                binaryStoreOfNonNegativeIntegerPortion.long = binaryStoreOfNonNegativeIntegerPortion.long & longWithFirstNBitsZero(BITS_IN_LONG - binaryStoreOfNonNegativeIntegerPortion.bitsAfterFirsttOne+1);
+                binaryStoreOfNonNegativeIntegerPortion.long = binaryStoreOfNonNegativeIntegerPortion.long & longWithFirstNBitsZero(BITS_IN_LONG - binaryStoreOfNonNegativeIntegerPortion.bitCountBeforeAllZeros+1);
                 //System.println("after " + binaryStoreOfNonNegativeIntegerPortion.long);
                 //by removing the "1", we adjust bit count
-                binaryStoreOfNonNegativeIntegerPortion.bitsAfterFirsttOne--;//TODO: better explanation
+                binaryStoreOfNonNegativeIntegerPortion.bitCountBeforeAllZeros--;//TODO: better explanation
                 binaryStoreOfNonNegativeIntegerPortion.totalBitCount--;
                 
                 // Bias is a property of the IEEE 754 standard. 
@@ -69,7 +69,7 @@ module BytePacking{
 
                 //System.println("integer portion " + binaryStoreOfNonNegativeIntegerPortion.bitCount);
                 // the rest of the decimal part (e.g. "0.001" or 0.125 in decimal) gets to take up the remaining part of the MANTISSA
-                var bitsRemainingForDecimal = BITS_IN_FLOAT_MANTISSA - binaryStoreOfNonNegativeIntegerPortion.bitsAfterFirsttOne;
+                var bitsRemainingForDecimal = BITS_IN_FLOAT_MANTISSA - binaryStoreOfNonNegativeIntegerPortion.totalBitCount; // TODO
                 //System.println("bitsRemainingForDecimal" + bitsRemainingForDecimal);
                 /*
                     now we store the decimal in long format via BinaryDataPair which will be easier for us to manipulate later on
@@ -87,15 +87,28 @@ module BytePacking{
                         (input.abs() - nonnegativeIntegerPortionOfFloat).toDouble(), 
                         {:maximumBits => bitsRemainingForDecimal}
                     );
+                    System.println("we here!");
+                    System.println(bitsRemainingForDecimal);
+                    System.println(binaryStoreOfDecimalPortion.totalBitCount);
+                    System.println(binaryStoreOfNonNegativeIntegerPortion.totalBitCount);
+                    System.println(binaryStoreOfNonNegativeIntegerPortion.bitCountBeforeAllZeros);
                     //we might not be using the entire mantissa, so we shift up the decimal portion to follow right after the integer portion.
-                    decimalPortionInProperBitLocation = binaryStoreOfDecimalPortion.long << (bitsRemainingForDecimal - binaryStoreOfDecimalPortion.totalBitCount);
+                    decimalPortionInProperBitLocation = binaryStoreOfDecimalPortion.long << (bitsRemainingForDecimal - binaryStoreOfDecimalPortion.totalBitCount);//we must respect bitCountBeforeAllZeros
                     // integer bits lead the decimal bits
-                    integerPortionInProperBitLocation = binaryStoreOfNonNegativeIntegerPortion.long << bitsRemainingForDecimal; 
+                    integerPortionInProperBitLocation = binaryStoreOfNonNegativeIntegerPortion.long << (bitsRemainingForDecimal + (binaryStoreOfNonNegativeIntegerPortion.totalBitCount-binaryStoreOfNonNegativeIntegerPortion.bitCountBeforeAllZeros)); 
                 }
                 else{
                     // there is only room for the integer portion
                     // TODO: why the negative one? use 16777372 as an example
-                    integerPortionInProperBitLocation = binaryStoreOfNonNegativeIntegerPortion.long >> (-1*bitsRemainingForDecimal); 
+                    System.println("BB "+bitsRemainingForDecimal);
+                    System.println(binaryStoreOfNonNegativeIntegerPortion.totalBitCount);
+                    System.println(binaryStoreOfNonNegativeIntegerPortion.bitCountBeforeAllZeros);
+                    if(binaryStoreOfNonNegativeIntegerPortion.bitCountBeforeAllZeros>BITS_IN_FLOAT_MANTISSA){
+                        integerPortionInProperBitLocation = binaryStoreOfNonNegativeIntegerPortion.long >> (binaryStoreOfNonNegativeIntegerPortion.bitCountBeforeAllZeros-BITS_IN_FLOAT_MANTISSA); 
+                    }
+                    else{
+                        integerPortionInProperBitLocation = binaryStoreOfNonNegativeIntegerPortion.long << (BITS_IN_FLOAT_MANTISSA-binaryStoreOfNonNegativeIntegerPortion.bitCountBeforeAllZeros); 
+                    }
                 }
                 longEquivalentInBitsOfFloat = exponentValueInProperBitLocation | integerPortionInProperBitLocation | decimalPortionInProperBitLocation;
             }
@@ -138,7 +151,7 @@ module BytePacking{
                     var shift = ((decimalData.bitCountAfterFirstOne - BITS_IN_FLOAT_MANTISSA)-1);
                     decimalPortionInProperBitLocation = decimalPortionInProperBitLocation >> shift;
                 }
-                else if(decimalData.bitCountAfterFirstOne < BITS_IN_FLOAT_MANTISSA+1){//TODO: subnormal numbers
+                else if( decimalData.bitCountAfterFirstOne < BITS_IN_FLOAT_MANTISSA+1){//TODO: subnormal numbers
                     System.println(decimalData.long);
                     System.println("way 2 " + decimalData.bitCountAfterFirstOne);
                     /*
@@ -147,10 +160,22 @@ module BytePacking{
                         will be padded with zeros. We add the plus one, because the leading one is "Free"
                         in IEEE 754 notation.
                     */
-                    var shift = (BITS_IN_FLOAT_MANTISSA - decimalData.bitCountAfterFirstOne)+1;
+                    var shift = 0;
+                    if(exponentValue > -127){
+                        shift = (BITS_IN_FLOAT_MANTISSA - decimalData.bitCountAfterFirstOne)+1;
+                    }
+                    else{
+                        //00000000010101001100100100100010 - 7.786335e-39
+                        //Mantissa is not zero, and the leading bit is assumed to be 0 (not 1 as in normalized numbers)
+                        System.println("sub "+exponentValue);
+                        shift = (BITS_IN_FLOAT_MANTISSA - decimalData.bitCountAfterFirstOne - (exponentValue+FLOAT_EXPONENT_BIAS).abs());
+                        exponentValue = -127;
+                    }
                     decimalPortionInProperBitLocation = decimalPortionInProperBitLocation << shift;
                     System.println(decimalPortionInProperBitLocation);
                 }
+
+                
                 
                 //This makes sure the space reserved for exponent and sign bit are all 0s including the "free" leading one of the mantissa portion
                 //32 because we are manipulating longs which are 64 bits long, while we are only working the tail 32 bits
