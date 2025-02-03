@@ -67,7 +67,7 @@ module BytePacking{
         Consider the double 1.7014118e38 which is equivalent to 2^{127} which in regular binary is a "1", followed by 126 binary zeros.
         While this number can be compactly stored in float/double's IEEE 754 format easily, (01111111000000000000000000000000 according to https://www.h-schmidt.net/FloatConverter/IEEE754.html),
         requiring 32 bits, long can only store a maximum number of 2,147,483,647 ( way less than 2^{127}) as it uses regular binary format. However,
-        we can store long member of FloorData as decimal "1" (equivalent to binary "1") while setting bitCountBeforeAllZeros to be 126.
+        we can store long member of FloorData as decimal "1" (equivalent to binary "1") while setting bitCountBeforeAllZeros to be 1.
 
         Therefore, we can convert all positive integer portions of a double to FloorData format as the maximum bits in a long is 64 while the mantissa portion in a double
         is 52 bits.
@@ -108,15 +108,20 @@ module BytePacking{
             _totalBitCount--;
         }
         
+        // see class description for details
         static function getBitsOfFloor(input as Toybox.Lang.Double) as FloorData {
-            // TODO: input handling
-            if(!(input instanceof Toybox.Lang.Double) ){ // TODO: test
+            if(!(input instanceof Toybox.Lang.Double) ){ 
                 /*
                     Necessary, to avoid unexpected behaviour if user supplies a Number for example.
                 */
                 throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Double argument type as argument",null,null);
             }
-            //TODO nan/inf test
+            if(isnan(input)){
+                throw new Toybox.Lang.InvalidValueException("Toybox.Lang.Double input can't be a 'nan'");
+            }
+            if(isinf(input)){
+                throw new Toybox.Lang.InvalidValueException("Toybox.Lang.Double input can't be a 'inf'");
+            }
             if(Math.floor(input) - input != 0 ){
                 throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double without anything after the '.'");
             }
@@ -126,9 +131,9 @@ module BytePacking{
 
             var totalBitCountInNumber = 0;
             var inputCopy = input;
-            var bitsSinceFirstOne = 0;// in a float or double will be limited by mantissa length
+            var bitCountBeforeAllZeros = 0;
             var longEquivalent = 0l;
-            var firstOne = longWithFirstNBitsOne(1);//'inverse' becase regular one has the just the last bit as 1 unlike here
+            var firstOne = longWithFirstNBitsOne(1);
             var firstZero = longWithFirstNBitsZero(1);
             
             while(inputCopy != 0){//TODO: add examples, explain how it is simliar but different to getBitsOfDecimal
@@ -137,15 +142,15 @@ module BytePacking{
                 longEquivalent  = longEquivalent >> 1;
                 longEquivalent = firstZero & longEquivalent;//TODO: why otherwise a bug
 
-                if(bitsSinceFirstOne>0){
-                    bitsSinceFirstOne++;
+                if(bitCountBeforeAllZeros>0){
+                    bitCountBeforeAllZeros++;
                 }
                 
                 if(remainder > 0){
                     inputCopy = inputCopy - remainder;
                     longEquivalent = longEquivalent | firstOne;
-                    if(bitsSinceFirstOne==0){
-                        bitsSinceFirstOne++;//bitsBeforeAllZeros
+                    if(bitCountBeforeAllZeros==0){
+                        bitCountBeforeAllZeros++;
                     }
                 }
 
@@ -156,19 +161,19 @@ module BytePacking{
             longEquivalent = longEquivalent >> 1;
             longEquivalent = longEquivalent & firstZero;
 
-            longEquivalent = longEquivalent >> ( BytePacking.BITS_IN_LONG - bitsSinceFirstOne -1 );
-            return new FloorData(longEquivalent, totalBitCountInNumber, bitsSinceFirstOne);
+            longEquivalent = longEquivalent >> ( BytePacking.BITS_IN_LONG - bitCountBeforeAllZeros -1 );
+            return new FloorData(longEquivalent, totalBitCountInNumber, bitCountBeforeAllZeros);
         }
     }
 
     class DecimalData{
         private var long as Toybox.Lang.Long;
         private var totalBitCount as Toybox.Lang.Number;
-        private var bitCountAfterFirstOne as Toybox.Lang.Number;
+        private var bitCountAfterLeadingZeros as Toybox.Lang.Number;
         private function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){
             long = l;
             totalBitCount = lbc;
-            bitCountAfterFirstOne = bcafo;
+            bitCountAfterLeadingZeros = bcafo;
         }
 
         function getLongEquivalent() as Toybox.Lang.Long{
@@ -179,8 +184,8 @@ module BytePacking{
             return totalBitCount;
         }
 
-        function getBitCountAfterFirstOne() as Toybox.Lang.Number{
-            return bitCountAfterFirstOne;
+        function getBitCountAfterLeadingZeros() as Toybox.Lang.Number{
+            return bitCountAfterLeadingZeros;
         }
 
         /*
@@ -192,11 +197,11 @@ module BytePacking{
             In Long format, we can't store the leading two zeros so we say the long representation of this is the number 3 (of the binary 
             "11") while the leading two zero bits will implicit and encoded as part of the DecimalData object's
             totalBitCount which will be set to 4 in this instance (two for the first two zeros and two for the "11").
-            We also store the value 2 for bitCountAfterFirstOne to show total bit count to store the number 3.
+            We also store the value 2 for bitCountAfterLeadingZeros to show total bit count to store the number 3.
 
             optionDict allows us to specify one of two possible maximums:
             :maximumBits
-            :maximumBitsAfterFirstOne
+            :maximumBitsAfterLeadingZeros
             The former is useful if we will expressing the leading zeros expicitly as part so therefore the amount of bits computed by
             getBitsOfDecimal will have to share those between the leading zeros and everything else that follows.
             The latter is useful if we do not have to express the leading zeros explicitly and can just worry about the tailing part
@@ -222,28 +227,28 @@ module BytePacking{
             if(!(optionDict instanceof Toybox.Lang.Dictionary)){
                 throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Dictionary argument type as second argument",null,null);
             }
-            if(!(   optionDict.size()==1 and (optionDict.hasKey(:maximumBits) or optionDict.hasKey(:maximumBitsAfterFirstOne)))   ){
-                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined");
+            if(!(   optionDict.size()==1 and (optionDict.hasKey(:maximumBits) or optionDict.hasKey(:maximumBitsAfterLeadingZeros)))   ){
+                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterLeadingZeros or maximumBits defined");
             }
             if(optionDict.hasKey(:maximumBits)){
                 if(!(optionDict[:maximumBits] instanceof Toybox.Lang.Number and optionDict[:maximumBits] >= 0)){
                     throw new Toybox.Lang.InvalidValueException("maximumBits must be a Toybox.Lang.Number greater than or equal to zero");
                 }
             }
-            if(optionDict.hasKey(:maximumBitsAfterFirstOne)){
-                if(!(optionDict[:maximumBitsAfterFirstOne] instanceof Toybox.Lang.Number and optionDict[:maximumBitsAfterFirstOne] >= 0)){
-                    throw new Toybox.Lang.InvalidValueException("maximumBitsAfterFirstOne must be a Toybox.Lang.Number greater than or equal to zero");
+            if(optionDict.hasKey(:maximumBitsAfterLeadingZeros)){
+                if(!(optionDict[:maximumBitsAfterLeadingZeros] instanceof Toybox.Lang.Number and optionDict[:maximumBitsAfterLeadingZeros] >= 0)){
+                    throw new Toybox.Lang.InvalidValueException("maximumBitsAfterLeadingZeros must be a Toybox.Lang.Number greater than or equal to zero");
                 }
             }
             
             var dummyMaxValue = 10000000;
             var maximumBits = optionDict.hasKey(:maximumBits) ? optionDict[:maximumBits] : dummyMaxValue;
-            var maximumBitsAfterFirstOne = optionDict.hasKey(:maximumBitsAfterFirstOne) ? optionDict[:maximumBitsAfterFirstOne] : dummyMaxValue;
+            var maximumBitsAfterLeadingZeros = optionDict.hasKey(:maximumBitsAfterLeadingZeros) ? optionDict[:maximumBitsAfterLeadingZeros] : dummyMaxValue;
 
 
             var totalBitCount = 0;
             var longEquivalent = 0l;
-            var bitCountSinceFirstOne = 0;
+            var bitCountSinceLeadingZeros = 0;
 
             // in binary -  this has only the last, rightmost, bit as "1"
             var one = 1l;
@@ -257,8 +262,8 @@ module BytePacking{
                     }
                 }
 
-                if(optionDict.hasKey(:maximumBitsAfterFirstOne)){
-                    if(bitCountSinceFirstOne>= maximumBitsAfterFirstOne){
+                if(optionDict.hasKey(:maximumBitsAfterLeadingZeros)){
+                    if(bitCountSinceLeadingZeros>= maximumBitsAfterLeadingZeros){
                         break;
                     }
                 }
@@ -287,21 +292,21 @@ module BytePacking{
 
                 inputCopy = inputCopy*2;
 
-                if(bitCountSinceFirstOne > 0){
-                    bitCountSinceFirstOne++;
+                if(bitCountSinceLeadingZeros > 0){
+                    bitCountSinceLeadingZeros++;
                 }
 
                 if(inputCopy >= 1){
                     longEquivalent = longEquivalent | one;
                     inputCopy = inputCopy - inputCopy.toNumber();//toNumber rounds inputCopy to integer
-                    if(bitCountSinceFirstOne == 0){
-                        bitCountSinceFirstOne = 1;
+                    if(bitCountSinceLeadingZeros == 0){
+                        bitCountSinceLeadingZeros = 1;
                     }
                 }
                 totalBitCount++;
             }
 
-            return new DecimalData(longEquivalent, totalBitCount, bitCountSinceFirstOne);
+            return new DecimalData(longEquivalent, totalBitCount, bitCountSinceLeadingZeros);
         }
 
         /*
@@ -350,7 +355,7 @@ module BytePacking{
                 makes sure we do not miss the leading batch of zeros
                 in the decimal binary
             */
-            for(var i=0; i<totalBitCount - bitCountAfterFirstOne; i++){
+            for(var i=0; i<totalBitCount - bitCountAfterLeadingZeros; i++){
                 output = output / 2;
             }
 
@@ -390,4 +395,21 @@ module BytePacking{
         }
         return output;
     }
+
+
+    // https://forums.garmin.com/developer/connect-iq/f/discussion/338071/testing-for-nan/1777041#1777041
+    const FLT_MAX = 3.4028235e38f;
+    const DBL_MAX = 1.7976931348623157e308d;
+
+    function isnan(x as Toybox.Lang.Float or Toybox.Lang.Double) as Toybox.Lang.Boolean {
+        return x != x;
+    }
+
+    function isinf(x as Toybox.Lang.Float or Toybox.Lang.Double) as Toybox.Lang.Boolean {
+        if(x instanceof Toybox.Lang.Double){
+            return (x < -DBL_MAX || DBL_MAX < x);
+        }
+        return (x < -FLT_MAX || FLT_MAX < x);
+    }
+
 }

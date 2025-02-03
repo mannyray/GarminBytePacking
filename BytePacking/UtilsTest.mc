@@ -1,6 +1,7 @@
 using Toybox.Test as Test;
 import Toybox.System;
 import Toybox.Lang;
+import Toybox.Math;
 
 module BytePacking{
     (:test)
@@ -165,7 +166,7 @@ module BytePacking{
             */
             new GetBitsOfDecimal_TestCase({
                     :doubleInput=>0.1d,
-                    :maxArgument=>{:maximumBitsAfterFirstOne=>7},
+                    :maxArgument=>{:maximumBitsAfterLeadingZeros=>7},
                     :bitsRequired=>10,
                     :bitsAfterFirstOne=>7,
                     :longEquivalent=>102l,
@@ -175,7 +176,7 @@ module BytePacking{
             }),            
             new GetBitsOfDecimal_TestCase({
                     :doubleInput=>0.1d,
-                    :maxArgument=>{:maximumBitsAfterFirstOne=>17},
+                    :maxArgument=>{:maximumBitsAfterLeadingZeros=>17},
                     :bitsRequired=>20,
                     :bitsAfterFirstOne=>17,
                     :longEquivalent=>104857l,
@@ -185,7 +186,7 @@ module BytePacking{
             }), 
             new GetBitsOfDecimal_TestCase({
                     :doubleInput=>0.1d,
-                    :maxArgument=>{:maximumBitsAfterFirstOne=>0},
+                    :maxArgument=>{:maximumBitsAfterLeadingZeros=>0},
                     :bitsRequired=>0,
                     :bitsAfterFirstOne=>0,
                     :longEquivalent=>0l,
@@ -217,10 +218,10 @@ module BytePacking{
                     [testCases[i].double,testCases[i].truncatedValueOfBinaryInDouble,output.getDecimalOfBits()]
                 )
             );
-            Test.assertEqualMessage(output.getBitCountAfterFirstOne(),testCases[i].bitsAfterFirstOne,
+            Test.assertEqualMessage(output.getBitCountAfterLeadingZeros(),testCases[i].bitsAfterFirstOne,
                 Toybox.Lang.format(
                     "Truncated version of $1$ should has $2$ bits after first one, but got $3$ for the binary decimal $4$",
-                    [testCases[i].truncatedValueOfBinaryInDouble,testCases[i].bitsAfterFirstOne,output.getBitCountAfterFirstOne(),testCases[i].binaryVersionOfDecimal]
+                    [testCases[i].truncatedValueOfBinaryInDouble,testCases[i].bitsAfterFirstOne,output.getBitCountAfterLeadingZeros(),testCases[i].binaryVersionOfDecimal]
                 )
             );
         }
@@ -280,22 +281,22 @@ module BytePacking{
             [],
             {},
             {:random=>1},
-            {:maximumBitsAfterFirstOne=>1,:maximumBits=>2},
-            {"maximumBitsAfterFirstOne"=>1},
-            {:maximumBitsAfterFirstOne=>-1},
-            {:maximumBitsAfterFirstOne=>1.0},
+            {:maximumBitsAfterLeadingZeros=>1,:maximumBits=>2},
+            {"maximumBitsAfterLeadingZeros"=>1},
+            {:maximumBitsAfterLeadingZeros=>-1},
+            {:maximumBitsAfterLeadingZeros=>1.0},
             {:maximumBits=>-1},
             {:maximumBits=>1.0},
             ];
         var expectedErrorMessages = [
             "Expecting Toybox.Lang.Dictionary argument type as second argument",
             "Expecting Toybox.Lang.Dictionary argument type as second argument",
-            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined",
-            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined",
-            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined",
-            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined",
-            "maximumBitsAfterFirstOne must be a Toybox.Lang.Number greater than or equal to zero",
-            "maximumBitsAfterFirstOne must be a Toybox.Lang.Number greater than or equal to zero",
+            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterLeadingZeros or maximumBits defined",
+            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterLeadingZeros or maximumBits defined",
+            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterLeadingZeros or maximumBits defined",
+            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterLeadingZeros or maximumBits defined",
+            "maximumBitsAfterLeadingZeros must be a Toybox.Lang.Number greater than or equal to zero",
+            "maximumBitsAfterLeadingZeros must be a Toybox.Lang.Number greater than or equal to zero",
             "maximumBits must be a Toybox.Lang.Number greater than or equal to zero",
             "maximumBits must be a Toybox.Lang.Number greater than or equal to zero",
         ];
@@ -408,6 +409,55 @@ module BytePacking{
         Test.assert(output.getLongEquivalent() == 1 );
         Test.assert(output.getTrailingZeroCount() == 1);
 
+        // TODO: more test cases once inverse of this function is implemented
+
+        return true;
+    }
+
+
+    (:test)
+    function UtilTest_invalidInput_getBitsOfFloor_Test(logger as Toybox.Test.Logger) as Boolean {
+        var wrongInputs = [
+            1f,
+            1,
+            123.01d,
+            -123d,
+            Math.acos(45d),
+        ];
+        var expectedErrors = [
+            "Expecting Toybox.Lang.Double argument type as argument",
+            "Expecting Toybox.Lang.Double argument type as argument",
+            "Expecting a Toybox.Lang.Double without anything after the '.'",
+            "Expecting a greater than zero Toybox.Lang.Double",
+            "Toybox.Lang.Double input can't be a 'nan'",
+        ];
+        for(var i=0; i<wrongInputs.size();i++){
+            try {
+                FloorData.getBitsOfFloor(wrongInputs[i]);//supposed to be a double and a float
+            } catch (e instanceof Toybox.Lang.Exception) {
+                var acquiredErrorMessage = e.getErrorMessage();
+                var expectedErrorMessage = expectedErrors[i];
+                Test.assertMessage(
+                    acquiredErrorMessage.find(expectedErrorMessage) != null,
+                    "Invalid error message. Got '" +
+                    acquiredErrorMessage +
+                    "', expected: '" +
+                    expectedErrorMessage +
+                    "'"
+                );
+            }
+        }
+        return true;
+    }
+
+    (:test)
+    function UtilTest_nan_inf_Test(logger as Toybox.Test.Logger) as Boolean {
+        Test.assert(!isnan(1d));
+        Test.assert(!isnan(1f));
+        Test.assert(isnan(Math.acos(45d)));
+
+        var infArr = [0x7f,0x80, 0x00, 0x00]b;
+        Test.assert(isinf(infArr.decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG})));
         return true;
     }
 }

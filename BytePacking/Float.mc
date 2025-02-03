@@ -30,6 +30,9 @@ module BytePacking{
             if(!(input instanceof Toybox.Lang.Float) ){
                 throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Float argument type",null,null);
             }
+            if(isnan(input) or isinf(input)){
+                throw new Toybox.Lang.InvalidValueException("Input cannot be inf or nan");
+            }
 
             /*
                 Important to track of the 32 bits used to store a float, one of them 
@@ -44,7 +47,7 @@ module BytePacking{
                 return [0x00,0x00,0x00,0x00]b;
             }
 
-            //TODO: nan check / inf check
+            
 
             
             var nonnegativeIntegerPortionOfFloat = Math.floor(input.abs());
@@ -150,7 +153,7 @@ module BytePacking{
             else{ // We are allowed to use all mantissa bits for the decimal portion as there is no integer portion
                 
                 //plus LEADING_ONE_OUTSIDE_MANTISSA_BIT because the first bit is "free" or "implicit" in IEEE 754 notation
-                var decimalData = DecimalData.getBitsOfDecimal(input.abs().toDouble(), {:maximumBitsAfterFirstOne => BITS_IN_FLOAT_MANTISSA+LEADING_ONE_OUTSIDE_MANTISSA_BIT});
+                var decimalData = DecimalData.getBitsOfDecimal(input.abs().toDouble(), {:maximumBitsAfterLeadingZeros => BITS_IN_FLOAT_MANTISSA+LEADING_ONE_OUTSIDE_MANTISSA_BIT});
                 var decimalPortionInProperBitLocation = decimalData.getLongEquivalent();
 
                 /*
@@ -162,9 +165,9 @@ module BytePacking{
                     which is (decimalData.bitCountAfterFirstOne - decimalData.totalBitCount) and then subtract the
                     additional -1 to get the leading one "1" over the "."
                 */
-                var exponentValue = decimalData.getBitCountAfterFirstOne() - decimalData.getTotalBitCount()-LEADING_ONE_OUTSIDE_MANTISSA_BIT;//TODO rereview this
+                var exponentValue = decimalData.getBitCountAfterLeadingZeros() - decimalData.getTotalBitCount()-LEADING_ONE_OUTSIDE_MANTISSA_BIT;//TODO rereview this
 
-                if( decimalData.getBitCountAfterFirstOne() < BITS_IN_FLOAT_MANTISSA+LEADING_ONE_OUTSIDE_MANTISSA_BIT){//TODO: test the edge case of subnormal and this
+                if( decimalData.getBitCountAfterLeadingZeros() < BITS_IN_FLOAT_MANTISSA+LEADING_ONE_OUTSIDE_MANTISSA_BIT){//TODO: test the edge case of subnormal and this
                     /*
                         the digits required to store the decimal portion are smaller than the permitted 
                         amount in MANTISSA. To account for this we just left shift all the value and the tail end
@@ -178,12 +181,12 @@ module BytePacking{
                             https://en.wikipedia.org/wiki/Subnormal_number where subnormals
                             have an exponent equal to MINIMAL_FLOAT_EXPONENT
                         */
-                        shift = (BITS_IN_FLOAT_MANTISSA - decimalData.getBitCountAfterFirstOne())+LEADING_ONE_OUTSIDE_MANTISSA_BIT;
+                        shift = (BITS_IN_FLOAT_MANTISSA - decimalData.getBitCountAfterLeadingZeros())+LEADING_ONE_OUTSIDE_MANTISSA_BIT;
                     }
                     else{ // subnormal number
                         //example: 0 00000000 10101001100100100100010 = 7.786335e-39
                         //Mantissa is not zero and exponent part is, and the leading bit is assumed to be 0
-                        shift = (BITS_IN_FLOAT_MANTISSA - decimalData.getBitCountAfterFirstOne() - (exponentValue+FLOAT_EXPONENT_BIAS).abs());
+                        shift = (BITS_IN_FLOAT_MANTISSA - decimalData.getBitCountAfterLeadingZeros() - (exponentValue+FLOAT_EXPONENT_BIAS).abs());
                         exponentValue = MINIMAL_FLOAT_EXPONENT;
                     }
                     decimalPortionInProperBitLocation = decimalPortionInProperBitLocation << shift;
@@ -192,7 +195,7 @@ module BytePacking{
                 /*
                     This makes sure the space reserved for exponent and sign bit are all 0s including the "free" leading one of the mantissa portion.
                     They may not be free, because of the " << shift" ran above OR the case where our leading one is outside mantissa portion 
-                    due to "decimalData.getBitCountAfterFirstOne() == BITS_IN_FLOAT_MANTISSA+LEADING_ONE_OUTSIDE_MANTISSA_BIT" condition.
+                    due to "decimalData.getBitCountAfterLeadingZeros() == BITS_IN_FLOAT_MANTISSA+LEADING_ONE_OUTSIDE_MANTISSA_BIT" condition.
                     SHIFT_D1UE_TO_FLOAT because we are manipulating longs which are 64 bits long, while we are only working the tail 32 bits
                 */
                 decimalPortionInProperBitLocation = decimalPortionInProperBitLocation && longWithFirstNBitsZero(SHIFT_DUE_TO_FLOAT+BITS_IN_FLOAT_EXPONENT + BITS_IN_SIGN);//TODO: necessary?
