@@ -136,31 +136,50 @@ module BytePacking{
             var firstOne = longWithFirstNBitsOne(1);
             var firstZero = longWithFirstNBitsZero(1);
             
-            while(inputCopy != 0){//TODO: add examples, explain how it is simliar but different to getBitsOfDecimal
+            /*
+                We keep diving the integer over and over thus "shifting" its bits to the right each time.
+                For example 1011.0 binary (in decimal equal to 11) divided by two gives
+                101.1 where the .1 or (in decimal equal to 0.5) the remainder means that we have just crossed a 
+                "1" binary across the "." (otherwise we crossed a "0" binary). By keep tracking of which binary crossed the
+                "." with each division we can copy over the bits to longEquivalent as we divide the integer all the way to zero.
+
+                Since we are discovering the number's bits starting from the right hand side then we append the bits one by one to the 
+                longEquivalent copy one by one on the left side and shift over to the right each time we discover a new bit. The result will be
+                the bits of the original double all on the left hand side of longEquivalent, which we correwct at the end of the while loop by right shifting
+                to the end.
+
+                Code here similar in spirit to getBitsOfDecimal expect now we divide instead of multiply
+            */
+            while(inputCopy != 0){
                 inputCopy = inputCopy / 2d;
                 var remainder = inputCopy - Math.floor(inputCopy);
-                longEquivalent  = longEquivalent >> 1;
-                longEquivalent = firstZero & longEquivalent;//TODO: why otherwise a bug
+
+                longEquivalent = longEquivalent >> 1;
+                /*
+                    We overwrite the new leading bit to zero for the default case in case binary 0 crossed the ".". 
+                    We cannot assuming the >>1 operation will provide a leading zero bit (especially in the case if the previous leading bit was "1")
+                */
+                longEquivalent = firstZero & longEquivalent;
 
                 if(bitCountBeforeAllZeros>0){
                     bitCountBeforeAllZeros++;
                 }
                 
                 if(remainder > 0){
-                    inputCopy = inputCopy - remainder;
-                    longEquivalent = longEquivalent | firstOne;
-                    if(bitCountBeforeAllZeros==0){
+                    inputCopy = inputCopy - remainder;// we don't care to track the crossed binary over the "." once tracked so we remove it
+                    longEquivalent = longEquivalent | firstOne;//since remainder>0 then a binary 1 has crossed the "."
+                    if(bitCountBeforeAllZeros==0){ // to track the very first binary 1 crossing the "." to give us the total amount of bits before all the zeros
                         bitCountBeforeAllZeros++;
                     }
                 }
-
                 totalBitCountInNumber++;
             }
-            // TODO: explanation via example
 
+            // following two lines are clearing out the sign bit which is the leading bit in the long number format
             longEquivalent = longEquivalent >> 1;
             longEquivalent = longEquivalent & firstZero;
 
+            // right shift all the way as described before the while loop
             longEquivalent = longEquivalent >> ( BytePacking.BITS_IN_LONG - bitCountBeforeAllZeros -1 );
             return new FloorData(longEquivalent, totalBitCountInNumber, bitCountBeforeAllZeros);
         }
