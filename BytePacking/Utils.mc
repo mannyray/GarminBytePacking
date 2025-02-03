@@ -160,202 +160,210 @@ module BytePacking{
     }
 
     class DecimalData{
-        var long as Toybox.Lang.Long;
-        var totalBitCount as Toybox.Lang.Number;
-        var bitCountAfterFirstOne as Toybox.Lang.Number;
-        function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){
+        private var long as Toybox.Lang.Long;
+        private var totalBitCount as Toybox.Lang.Number;
+        private var bitCountAfterFirstOne as Toybox.Lang.Number;
+        private function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){
             long = l;
             totalBitCount = lbc;
             bitCountAfterFirstOne = bcafo;
         }
-    }
 
-    /*
-        For a given Decimal number, say 0.1875, we return a Long representation of it along with the
-        amount of binary bits required to store it. The equivalent of 0.1875 in "decimal" binary is
-        "0.0011" (i.e. 0*2^{-1} + 0*2^{-2} + 1*2^{-3} + 1*2^{-4}= 0.1875). In Long format, we can't store the first
-        two zeros so we say the long representation of this is the number 3 (of the binary 
-        "11") while the first two zero bits will implicit and encoded as part of the BinaryDataPair object's TODO:BinaryDataPair no longer used
-        bitCount which will be set to 4 in this instance (two for the first two zeros and two for the "11").
-
-        maximumBits is useful for us to restrict how many binary bits we want to compute as some binary 
-        decimals may have infinite numbers or we may not care about the remainder bits after a certain level
-        of resolution. - TODO: replace with optionDict
-    */
-    function getBitsOfDecimal(input as Toybox.Lang.Double, optionDict as Toybox.Lang.Dictionary) as DecimalData{
-        
-        if(!(input instanceof Toybox.Lang.Double) ){
-            /*
-                Necessary, to avoid unexpected behaviour if user supplies a Number for example.
-            */
-            throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Double argument type as first argument",null,null);
+        function getLongEquivalent() as Toybox.Lang.Long{
+            return long; 
         }
 
-        if(input < 0 or input >= 1){
-            /*
-            We expect input of the type 0.123... . The caller must themselves format the double to remove
-            the leading number (e.g. var double = 1.123; var input = double - decimal.toLong(); )
-            */
-            throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double in the range of (0,1) as first argument");
+        function getTotalBitCount() as Toybox.Lang.Number{
+            return totalBitCount;
         }
 
-        // TODO make this a hidden function to verify the dictionary
-        if(!(optionDict instanceof Toybox.Lang.Dictionary)){
-            //TODO: test this
-            throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Dictionary argument type as second argument",null,null);
+        function getBitCountAfterFirstOne() as Toybox.Lang.Number{
+            return bitCountAfterFirstOne;
         }
 
-        if(!(optionDict instanceof Toybox.Lang.Dictionary)){
-            //TODO: test this
-            throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Dictionary argument type as second argument",null,null);
-        }
+        /*
+            For a given Decimal number, say 0.1875, we return a Long representation of it along with the
+            amount of binary bits required to store it. The equivalent of 0.1875 in "decimal" binary is
+            "0.0011" (i.e. 0*2^{-1} + 0*2^{-2} + 1*2^{-3} + 1*2^{-4}= 0.1875). In Long format, we can't store the first
+            two zeros so we say the long representation of this is the number 3 (of the binary 
+            "11") while the first two zero bits will implicit and encoded as part of the BinaryDataPair object's TODO:BinaryDataPair no longer used
+            bitCount which will be set to 4 in this instance (two for the first two zeros and two for the "11").
 
-        if(!(   optionDict.size()==1 and (optionDict.hasKey(:maximumBits) or optionDict.hasKey(:maximumBitsAfterFirstOne)))   ){
-            //TODO: test this
-            throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO" + optionDict);
-        }
-
-        if(optionDict.hasKey(:maximumBits)){
-            // TODO: test this
-            if(!(optionDict[:maximumBits] instanceof Toybox.Lang.Number and optionDict[:maximumBits] >= 0)){//TODO: upper limit?
-                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO");
+            maximumBits is useful for us to restrict how many binary bits we want to compute as some binary 
+            decimals may have infinite numbers or we may not care about the remainder bits after a certain level
+            of resolution. - TODO: replace with optionDict
+        */
+        static function getBitsOfDecimal(input as Toybox.Lang.Double, optionDict as Toybox.Lang.Dictionary) as DecimalData{
+            
+            if(!(input instanceof Toybox.Lang.Double) ){
+                /*
+                    Necessary, to avoid unexpected behaviour if user supplies a Number for example.
+                */
+                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Double argument type as first argument",null,null);
             }
-        }
 
-        if(optionDict.hasKey(:maximumBitsAfterFirstOne)){
-            // TODO: test this
-            if(!(optionDict[:maximumBitsAfterFirstOne] instanceof Toybox.Lang.Number and optionDict[:maximumBitsAfterFirstOne] >= 0)){//TODO: upper limit?
-                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO");
+            if(input < 0 or input >= 1){
+                /*
+                We expect input of the type 0.123... . The caller must themselves format the double to remove
+                the leading number (e.g. var double = 1.123; var input = double - decimal.toLong(); )
+                */
+                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double in the range of (0,1) as first argument");
             }
-        }
-        
 
-        var maximumBits = optionDict.hasKey(:maximumBits) ? optionDict[:maximumBits] : 10000000; //TODO change this one more than option possible
-        var maximumBitsAfterFirstOne = optionDict.hasKey(:maximumBitsAfterFirstOne) ? optionDict[:maximumBitsAfterFirstOne] : 10000000; //TODO change this one more than option possible
-        //TODO ^ naming convention to be inclusive of the first one?
+            // TODO make this a hidden function to verify the dictionary
+            if(!(optionDict instanceof Toybox.Lang.Dictionary)){
+                //TODO: test this
+                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Dictionary argument type as second argument",null,null);
+            }
 
-        //TODO: maximumBits has to be a dictionary which specifies which maximum we are using
-        // only one maximum can be defined in the dict: maximumOverAllBits XOR maximumBitsAfterFirstOne
-        // }
+            if(!(optionDict instanceof Toybox.Lang.Dictionary)){
+                //TODO: test this
+                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Dictionary argument type as second argument",null,null);
+            }
 
-        var totalBitCount = 0;
-        var longEquivalent = 0l;
-        var bitCountSinceFirstOne = 0;
-
-        // in binary -  this has only the last, rightmost, bit as "1"
-        var one = 1l;
-        var inputCopy = input;
-
-        while(inputCopy != 0){
+            if(!(   optionDict.size()==1 and (optionDict.hasKey(:maximumBits) or optionDict.hasKey(:maximumBitsAfterFirstOne)))   ){
+                //TODO: test this
+                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO" + optionDict);
+            }
 
             if(optionDict.hasKey(:maximumBits)){
-                if(totalBitCount>= maximumBits){
-                    break;
+                // TODO: test this
+                if(!(optionDict[:maximumBits] instanceof Toybox.Lang.Number and optionDict[:maximumBits] >= 0)){//TODO: upper limit?
+                    throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO");
                 }
             }
 
             if(optionDict.hasKey(:maximumBitsAfterFirstOne)){
-                if(bitCountSinceFirstOne>= maximumBitsAfterFirstOne){
-                    break;
+                // TODO: test this
+                if(!(optionDict[:maximumBitsAfterFirstOne] instanceof Toybox.Lang.Number and optionDict[:maximumBitsAfterFirstOne] >= 0)){//TODO: upper limit?
+                    throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO");
                 }
             }
-            /*
-                Through this loop, we reduce the original decimal
-                to zero, by constantly doubling it and removing the 
-                integer portion of the number. Doubling has an effect
-                of shifting the bits, for example "0.001" in binary (in decimal is 0.125)
-                becomes "00.01" (in decimal 0.25) after doubling (the bits have shifted over the ".").
-                
-                In our loop, we track each bit that crosses the "." mark, after multipying,
-                in order to trascribe it over to our output.long . 
-                If it is a zero then we just shift over the bits in output.long
-                which has the equivalent effect of adding a tailing binary "0"
-                in output.long. If it is a one, then we still shift over, but also
-                logical OR a "1" bit to the tail.
+            
 
-                We remove the integer portion of the number each loop in order for it to be clear
-                if the bit in the current iteration crossing the "." is a "1" or "0" bit.
+            var maximumBits = optionDict.hasKey(:maximumBits) ? optionDict[:maximumBits] : 10000000; //TODO change this one more than option possible
+            var maximumBitsAfterFirstOne = optionDict.hasKey(:maximumBitsAfterFirstOne) ? optionDict[:maximumBitsAfterFirstOne] : 10000000; //TODO change this one more than option possible
+            //TODO ^ naming convention to be inclusive of the first one?
 
-                Each loop, bitCount grows by one to keep tracking of the total amount of
-                bits required, including the first potential batch of "0" bits.
-            */
+            //TODO: maximumBits has to be a dictionary which specifies which maximum we are using
+            // only one maximum can be defined in the dict: maximumOverAllBits XOR maximumBitsAfterFirstOne
+            // }
 
-            longEquivalent = longEquivalent<<1;
+            var totalBitCount = 0;
+            var longEquivalent = 0l;
+            var bitCountSinceFirstOne = 0;
 
-            inputCopy = inputCopy*2;
+            // in binary -  this has only the last, rightmost, bit as "1"
+            var one = 1l;
+            var inputCopy = input;
 
-            if(bitCountSinceFirstOne > 0){
-                bitCountSinceFirstOne++;
-            }
+            while(inputCopy != 0){
 
-            if(inputCopy >= 1){
-                longEquivalent = longEquivalent | one;
-                inputCopy = inputCopy - inputCopy.toNumber();//toNumber rounds inputCopy to integer
-                if(bitCountSinceFirstOne == 0){
-                    bitCountSinceFirstOne = 1;
+                if(optionDict.hasKey(:maximumBits)){
+                    if(totalBitCount>= maximumBits){
+                        break;
+                    }
                 }
-            }
-            totalBitCount++;
-        }
 
-        return new DecimalData(longEquivalent, totalBitCount, bitCountSinceFirstOne);
-    }
+                if(optionDict.hasKey(:maximumBitsAfterFirstOne)){
+                    if(bitCountSinceFirstOne>= maximumBitsAfterFirstOne){
+                        break;
+                    }
+                }
+                /*
+                    Through this loop, we reduce the original decimal
+                    to zero, by constantly doubling it and removing the 
+                    integer portion of the number. Doubling has an effect
+                    of shifting the bits, for example "0.001" in binary (in decimal is 0.125)
+                    becomes "00.01" (in decimal 0.25) after doubling (the bits have shifted over the ".").
+                    
+                    In our loop, we track each bit that crosses the "." mark, after multipying,
+                    in order to trascribe it over to our output.long . 
+                    If it is a zero then we just shift over the bits in output.long
+                    which has the equivalent effect of adding a tailing binary "0"
+                    in output.long. If it is a one, then we still shift over, but also
+                    logical OR a "1" bit to the tail.
 
-    /*
-        See getBitsOfDecimal header for details as this function is designed to be 
-        the opposite of that.
+                    We remove the integer portion of the number each loop in order for it to be clear
+                    if the bit in the current iteration crossing the "." is a "1" or "0" bit.
 
-        Input specification by example:
-                say input.long is 5 which in binary is "101"
-                while input.bitCount is 5 which means the 
-                binary "decimal" number is "0.00101" (we shift the the "101" 2 spots over to get 5 binary decimal spots)
-                which in decimal is 0.15625 according to
-                https://www.rapidtables.com/convert/number/binary-to-decimal.html?x=0.00101
+                    Each loop, bitCount grows by one to keep tracking of the total amount of
+                    bits required, including the first potential batch of "0" bits.
+                */
 
-                our input stores the binary decimal as a long while the bitCount determines where the "." is located
-                long is favoured for storage as it is easy to use in bit manipulation.
-        
-        The code in this function returns the double version of a decimal encoded in BinaryDataPair format.
-    */
-    function getDecimalOfBits( input as DecimalData ) as Toybox.Lang.Double {
+                longEquivalent = longEquivalent<<1;
 
-        var long = input.long;
-        var bitCountBeforeZero = 0;
+                inputCopy = inputCopy*2;
 
-        var output = 0d;
-       
-        while(long > 0){
-            /*
-                The code in the loop here is the opposite of the
-                code in the loop getBitsOfDecimal.
+                if(bitCountSinceFirstOne > 0){
+                    bitCountSinceFirstOne++;
+                }
 
-                We keep bit shifting the long over by one and
-                if the tail end bit is 1 then we add this as a integer
-                portion to the double and divide by two. Otherwise we just divide by two,
-                which in the double has the equivalent effect of bit shiffting the decimal bits
-                'deeper' to the right.
-            */
-            var isFirstBitOne = 1 == (1l && long);
-
-            if(isFirstBitOne){
-                output = output + 1;
+                if(inputCopy >= 1){
+                    longEquivalent = longEquivalent | one;
+                    inputCopy = inputCopy - inputCopy.toNumber();//toNumber rounds inputCopy to integer
+                    if(bitCountSinceFirstOne == 0){
+                        bitCountSinceFirstOne = 1;
+                    }
+                }
+                totalBitCount++;
             }
 
-            output = output / 2;
-            long = long >> 1;
-            bitCountBeforeZero++;
+            return new DecimalData(longEquivalent, totalBitCount, bitCountSinceFirstOne);
         }
 
         /*
-            See getBitsOfDecimal for details - this code here
-            makes sure we do not miss the leading batch of zeros
-            in the decimal binary
-        */
-        for(var i=0; i<input.totalBitCount - bitCountBeforeZero; i++){
-            output = output / 2;
-        }
+            See getBitsOfDecimal header for details as this function is designed to be 
+            the opposite of that.
 
-        return output;
+            Input specification by example:
+                    say input.long is 5 which in binary is "101"
+                    while input.bitCount is 5 which means the 
+                    binary "decimal" number is "0.00101" (we shift the the "101" 2 spots over to get 5 binary decimal spots)
+                    which in decimal is 0.15625 according to
+                    https://www.rapidtables.com/convert/number/binary-to-decimal.html?x=0.00101
+
+                    our input stores the binary decimal as a long while the bitCount determines where the "." is located
+                    long is favoured for storage as it is easy to use in bit manipulation.
+            
+            The code in this function returns the double version of a decimal encoded in BinaryDataPair format.
+        */
+        function getDecimalOfBits() as Toybox.Lang.Double {
+            var longCopy = long;
+            var output = 0d;
+        
+            while(longCopy > 0){
+                /*
+                    The code in the loop here is the opposite of the
+                    code in the loop getBitsOfDecimal.
+
+                    We keep bit shifting the longCopy over by one and
+                    if the tail end bit is 1 then we add this as a integer
+                    portion to the double and divide by two. Otherwise we just divide by two,
+                    which in the double has the equivalent effect of bit shiffting the decimal bits
+                    'deeper' to the right.
+                */
+                var isFirstBitOne = 1 == (1l && longCopy);
+
+                if(isFirstBitOne){
+                    output = output + 1;
+                }
+
+                output = output / 2;
+                longCopy = longCopy >> 1;
+            }
+
+            /*
+                See getBitsOfDecimal for details - this code here
+                makes sure we do not miss the leading batch of zeros
+                in the decimal binary
+            */
+            for(var i=0; i<totalBitCount - bitCountAfterFirstOne; i++){
+                output = output / 2;
+            }
+
+            return output;
+        }
     }
 
     /*

@@ -200,29 +200,29 @@ module BytePacking{
         ];
         for(var i=0; i<testCases.size(); i++){
 
-            var output =  getBitsOfDecimal(testCases[i].double,testCases[i].maxArgument );
-            Test.assertEqualMessage(output.totalBitCount,testCases[i].bitsRequired,
+            var output =  DecimalData.getBitsOfDecimal(testCases[i].double,testCases[i].maxArgument );
+            Test.assertEqualMessage(output.getTotalBitCount(),testCases[i].bitsRequired,
                 Toybox.Lang.format(
                     "Requiring $1$ bits to store $2$ (binary version: $3$), but got $4$ bits computed.",
-                    [testCases[i].bitsRequired,testCases[i].double,testCases[i].binaryVersionOfDecimal,output.totalBitCount]
+                    [testCases[i].bitsRequired,testCases[i].double,testCases[i].binaryVersionOfDecimal,output.getTotalBitCount()]
                 )
             );
-            Test.assertEqualMessage(output.long,testCases[i].longEquivalent,
+            Test.assertEqualMessage(output.getLongEquivalent(),testCases[i].longEquivalent,
                 Toybox.Lang.format(
                     "Long stored version of $1$ should be $3$ (or in binary $2$), but got $4$",//TODO: typo here?
-                    [testCases[i].double,testCases[i].binaryVersionOfDecimal,testCases[i].longEquivalent,output.long]
+                    [testCases[i].double,testCases[i].binaryVersionOfDecimal,testCases[i].longEquivalent,output.getLongEquivalent()]
                 )
             );
-            Test.assertEqualMessage(getDecimalOfBits(output),testCases[i].truncatedValueOfBinaryInDouble,
+            Test.assertEqualMessage(output.getDecimalOfBits(),testCases[i].truncatedValueOfBinaryInDouble,
                 Toybox.Lang.format(
                     "Truncated double version of $1$ should be $2$, but got $3$",
-                    [testCases[i].double,testCases[i].truncatedValueOfBinaryInDouble,getDecimalOfBits(output)]
+                    [testCases[i].double,testCases[i].truncatedValueOfBinaryInDouble,output.getDecimalOfBits()]
                 )
             );
-            Test.assertEqualMessage(output.bitCountAfterFirstOne,testCases[i].bitsAfterFirstOne,
+            Test.assertEqualMessage(output.getBitCountAfterFirstOne(),testCases[i].bitsAfterFirstOne,
                 Toybox.Lang.format(
                     "Truncated version of $1$ should has $2$ bits after first one, but got $3$ for the binary decimal $4$",
-                    [testCases[i].truncatedValueOfBinaryInDouble,testCases[i].bitsAfterFirstOne,output.bitCountAfterFirstOne,testCases[i].binaryVersionOfDecimal]
+                    [testCases[i].truncatedValueOfBinaryInDouble,testCases[i].bitsAfterFirstOne,output.getBitCountAfterFirstOne(),testCases[i].binaryVersionOfDecimal]
                 )
             );
         }
@@ -233,7 +233,7 @@ module BytePacking{
     function UtilTest_invalidInput_getBitsOfDecimal_Test(logger as Toybox.Test.Logger) as Boolean {
         var randomDepth = 10;
         try {
-            getBitsOfDecimal(0.123f,{:maximumBits => randomDepth} );//supposed to be a double and a float
+            DecimalData.getBitsOfDecimal(0.123f,{:maximumBits => randomDepth} );//supposed to be a double and a float
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting Toybox.Lang.Double argument type as first argument";
@@ -248,7 +248,7 @@ module BytePacking{
         }
 
         try {
-            getBitsOfDecimal(1d,{:maximumBits => randomDepth} );
+            DecimalData.getBitsOfDecimal(1d,{:maximumBits => randomDepth} );
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1) as first argument";
@@ -263,7 +263,7 @@ module BytePacking{
         }
 
         try {
-            getBitsOfDecimal(-0.123d,{:maximumBits => randomDepth} );
+            DecimalData.getBitsOfDecimal(-0.123d,{:maximumBits => randomDepth} );
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1) as first argument";
