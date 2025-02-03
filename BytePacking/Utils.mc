@@ -99,9 +99,10 @@ module BytePacking{
         }
 
         function removeLeadingBit() as Void{
-            //TODO: explain and test.
-            //TODO: off by one, edge case
-            //TODO: edge case of calling this multiple times not skipping the zero
+            /*
+                Useful for when storing the number in the mantissa where the leading one
+                binary is impicit.
+            */
             _long = _long & longWithFirstNBitsZero(BITS_IN_LONG - _bitCountBeforeAllZeros+1);
             _bitCountBeforeAllZeros--;
             _totalBitCount--;
@@ -115,6 +116,7 @@ module BytePacking{
                 */
                 throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Double argument type as argument",null,null);
             }
+            //TODO nan/inf test
             if(Math.floor(input) - input != 0 ){
                 throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double without anything after the '.'");
             }
@@ -184,14 +186,21 @@ module BytePacking{
         /*
             For a given Decimal number, say 0.1875, we return a Long representation of it along with the
             amount of binary bits required to store it. The equivalent of 0.1875 in "decimal" binary is
-            "0.0011" (i.e. 0*2^{-1} + 0*2^{-2} + 1*2^{-3} + 1*2^{-4}= 0.1875). In Long format, we can't store the first
-            two zeros so we say the long representation of this is the number 3 (of the binary 
-            "11") while the first two zero bits will implicit and encoded as part of the BinaryDataPair object's TODO:BinaryDataPair no longer used
-            bitCount which will be set to 4 in this instance (two for the first two zeros and two for the "11").
+            "0.0011" (i.e. 0*2^{-1} + 0*2^{-2} + 1*2^{-3} + 1*2^{-4}= 0.1875). Observe how there are always 
+            a set amount (0 or more) of leading binary zeros after the "." before the first binary "1" starts.
+            
+            In Long format, we can't store the leading two zeros so we say the long representation of this is the number 3 (of the binary 
+            "11") while the leading two zero bits will implicit and encoded as part of the DecimalData object's
+            totalBitCount which will be set to 4 in this instance (two for the first two zeros and two for the "11").
+            We also store the value 2 for bitCountAfterFirstOne to show total bit count to store the number 3.
 
-            maximumBits is useful for us to restrict how many binary bits we want to compute as some binary 
-            decimals may have infinite numbers or we may not care about the remainder bits after a certain level
-            of resolution. - TODO: replace with optionDict
+            optionDict allows us to specify one of two possible maximums:
+            :maximumBits
+            :maximumBitsAfterFirstOne
+            The former is useful if we will expressing the leading zeros expicitly as part so therefore the amount of bits computed by
+            getBitsOfDecimal will have to share those between the leading zeros and everything else that follows.
+            The latter is useful if we do not have to express the leading zeros explicitly and can just worry about the tailing part
+            of the binary.
         */
         static function getBitsOfDecimal(input as Toybox.Lang.Double, optionDict as Toybox.Lang.Dictionary) as DecimalData{
             
@@ -210,44 +219,27 @@ module BytePacking{
                 throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Double in the range of (0,1) as first argument");
             }
 
-            // TODO make this a hidden function to verify the dictionary
             if(!(optionDict instanceof Toybox.Lang.Dictionary)){
-                //TODO: test this
                 throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Dictionary argument type as second argument",null,null);
             }
-
-            if(!(optionDict instanceof Toybox.Lang.Dictionary)){
-                //TODO: test this
-                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Dictionary argument type as second argument",null,null);
-            }
-
             if(!(   optionDict.size()==1 and (optionDict.hasKey(:maximumBits) or optionDict.hasKey(:maximumBitsAfterFirstOne)))   ){
-                //TODO: test this
-                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO" + optionDict);
+                throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined");
             }
-
             if(optionDict.hasKey(:maximumBits)){
-                // TODO: test this
-                if(!(optionDict[:maximumBits] instanceof Toybox.Lang.Number and optionDict[:maximumBits] >= 0)){//TODO: upper limit?
-                    throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO");
+                if(!(optionDict[:maximumBits] instanceof Toybox.Lang.Number and optionDict[:maximumBits] >= 0)){
+                    throw new Toybox.Lang.InvalidValueException("maximumBits must be a Toybox.Lang.Number greater than or equal to zero");
                 }
             }
-
             if(optionDict.hasKey(:maximumBitsAfterFirstOne)){
-                // TODO: test this
-                if(!(optionDict[:maximumBitsAfterFirstOne] instanceof Toybox.Lang.Number and optionDict[:maximumBitsAfterFirstOne] >= 0)){//TODO: upper limit?
-                    throw new Toybox.Lang.InvalidValueException("Expecting a Toybox.Lang.Dictionary of size of 1 with TODO");
+                if(!(optionDict[:maximumBitsAfterFirstOne] instanceof Toybox.Lang.Number and optionDict[:maximumBitsAfterFirstOne] >= 0)){
+                    throw new Toybox.Lang.InvalidValueException("maximumBitsAfterFirstOne must be a Toybox.Lang.Number greater than or equal to zero");
                 }
             }
             
+            var dummyMaxValue = 10000000;
+            var maximumBits = optionDict.hasKey(:maximumBits) ? optionDict[:maximumBits] : dummyMaxValue;
+            var maximumBitsAfterFirstOne = optionDict.hasKey(:maximumBitsAfterFirstOne) ? optionDict[:maximumBitsAfterFirstOne] : dummyMaxValue;
 
-            var maximumBits = optionDict.hasKey(:maximumBits) ? optionDict[:maximumBits] : 10000000; //TODO change this one more than option possible
-            var maximumBitsAfterFirstOne = optionDict.hasKey(:maximumBitsAfterFirstOne) ? optionDict[:maximumBitsAfterFirstOne] : 10000000; //TODO change this one more than option possible
-            //TODO ^ naming convention to be inclusive of the first one?
-
-            //TODO: maximumBits has to be a dictionary which specifies which maximum we are using
-            // only one maximum can be defined in the dict: maximumOverAllBits XOR maximumBitsAfterFirstOne
-            // }
 
             var totalBitCount = 0;
             var longEquivalent = 0l;

@@ -69,8 +69,6 @@ module BytePacking{
             binaryVersionOfDecimal = input[:binaryVersionOfDecimal];
             binaryWithoutLeadingZeros = input[:binaryWithoutLeadingZeros];
             truncatedValueOfBinaryInDouble = input[:truncatedValueOfBinaryInDouble];
-            //TODO: new argument to test new maximumParamater
-            //TODO: format input to tests as dictionary for readability
         }
     }
 
@@ -209,7 +207,7 @@ module BytePacking{
             );
             Test.assertEqualMessage(output.getLongEquivalent(),testCases[i].longEquivalent,
                 Toybox.Lang.format(
-                    "Long stored version of $1$ should be $3$ (or in binary $2$), but got $4$",//TODO: typo here?
+                    "Long stored version of $1$ should be $3$ (or in binary $2$), but got $4$",
                     [testCases[i].double,testCases[i].binaryVersionOfDecimal,testCases[i].longEquivalent,output.getLongEquivalent()]
                 )
             );
@@ -275,6 +273,48 @@ module BytePacking{
                 expectedErrorMessage +
                 "'"
             );
+        }
+
+        var invalidDictionaries = [ 
+            0.1d,
+            [],
+            {},
+            {:random=>1},
+            {:maximumBitsAfterFirstOne=>1,:maximumBits=>2},
+            {"maximumBitsAfterFirstOne"=>1},
+            {:maximumBitsAfterFirstOne=>-1},
+            {:maximumBitsAfterFirstOne=>1.0},
+            {:maximumBits=>-1},
+            {:maximumBits=>1.0},
+            ];
+        var expectedErrorMessages = [
+            "Expecting Toybox.Lang.Dictionary argument type as second argument",
+            "Expecting Toybox.Lang.Dictionary argument type as second argument",
+            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined",
+            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined",
+            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined",
+            "Expecting a Toybox.Lang.Dictionary of size of 1 with one of maximumBitsAfterFirstOne or maximumBits defined",
+            "maximumBitsAfterFirstOne must be a Toybox.Lang.Number greater than or equal to zero",
+            "maximumBitsAfterFirstOne must be a Toybox.Lang.Number greater than or equal to zero",
+            "maximumBits must be a Toybox.Lang.Number greater than or equal to zero",
+            "maximumBits must be a Toybox.Lang.Number greater than or equal to zero",
+        ];
+
+        for(var i=0; i<invalidDictionaries.size(); i++ ){
+            try {
+                DecimalData.getBitsOfDecimal(0.123d,invalidDictionaries[i] );
+            } catch (e instanceof Toybox.Lang.Exception) {
+                var acquiredErrorMessage = e.getErrorMessage();
+                var expectedErrorMessage = expectedErrorMessages[i];
+                Test.assertMessage(
+                    acquiredErrorMessage.find(expectedErrorMessage) != null,
+                    "Invalid error message. Got '" +
+                    acquiredErrorMessage +
+                    "', expected: '" +
+                    expectedErrorMessage +
+                    "'"
+                );
+            }
         }
         return true;
     }
