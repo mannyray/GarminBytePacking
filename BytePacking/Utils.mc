@@ -183,13 +183,79 @@ module BytePacking{
             longEquivalent = longEquivalent >> ( BytePacking.BITS_IN_LONG - bitCountBeforeAllZeros -1 );
             return new FloorData(longEquivalent, totalBitCountInNumber, bitCountBeforeAllZeros);
         }
+
+
+        static function newFloorData(long as Toybox.Lang.Long, totalBitCount as Toybox.Lang.Number) as FloorData{
+            /*
+                Create a FloorData object for the case when there is an expected amount totalBitCount as well as
+                a long input that may or not have already some of the trailing zeros as part of _bitCountBeforeAllZeros
+
+                Objective: compute the real value of _bitCountBeforeAllZeros based on totalBitCount and already 
+                present trailing zeros in long as well as set the long as that its bits purely represent the part before all the zeros
+
+                Example:
+                Binary
+                Input: 100100 ( long = 36 decimal) and totalBitCount 10
+                Output: FloorData(_long=9('1001'), _totalBitCount=10, _bitCountBeforeAllZeros=4)
+            */
+
+            if(!(long instanceof Toybox.Lang.Long) ){//TODO: test
+                /*
+                    Necessary, to avoid unexpected behaviour if user supplies a Number for example.
+                */
+                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Long argument type as first argument",null,null);
+            }
+            if(long <= 0){
+                throw new Toybox.Lang.InvalidValueException("Expected positive integer Toybox.Lang.Long as first argument");
+            }
+
+            var onlyRightmostBitOne = 1l;
+            var firstBit = long & onlyRightmostBitOne;
+            while(firstBit!=1l){
+                long = long >> 1;
+                firstBit = long & onlyRightmostBitOne;
+            }
+            // now we have removed the trailing zeros so time to determine bit count of this new long
+            var bdp = new BinaryDataPair(long); 
+            if (totalBitCount < bdp.bitCount){
+                throw new Toybox.Lang.InvalidValueException("totalBitCount illogical");
+            }
+            return new FloorData(long, totalBitCount, bdp.bitCount);
+        }
+
+        /*
+            TODO: describe
+        */
+        function getFloorOfBits() as Toybox.Lang.Double{
+            /*
+                We assume that newFloorData has cleaned up trailing zero concern. We test for this.
+            */
+            var testFloorData = newFloorData(_long,_totalBitCount);
+            if(_long!= testFloorData.getLongEquivalent() or _bitCountBeforeAllZeros != testFloorData.getBitCountBeforeTrailingZeros() ){
+                throw new Toybox.Lang.InvalidValueException("There are still trailing zeros in "+_bitCountBeforeAllZeros + " "+testFloorData.getBitCountBeforeTrailingZeros());
+            }
+
+            var output = 0d;
+            var multipyingFactor = 1d;
+            var onlyRightmostBitOne = 1l;
+            var longCopy = _long;
+            for(var i=0; i<_bitCountBeforeAllZeros; i++){
+                output = output + (longCopy&onlyRightmostBitOne).toDouble() * multipyingFactor;
+                longCopy = longCopy >> 1;
+                multipyingFactor *= 2d;
+            }
+            for(var i=0; i< getTrailingZeroCount(); i++){
+                output = output * 2d;
+            }
+            return output;
+        }
     }
 
     class DecimalData{
         private var long as Toybox.Lang.Long;
         private var totalBitCount as Toybox.Lang.Number;
         private var bitCountAfterLeadingZeros as Toybox.Lang.Number;
-        private function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){
+        function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){
             long = l;
             totalBitCount = lbc;
             bitCountAfterLeadingZeros = bcafo;

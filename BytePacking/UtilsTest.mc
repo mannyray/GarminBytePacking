@@ -376,6 +376,7 @@ module BytePacking{
             BytePacking.Long.longToByteArray(longWithFirstNBitsZero(64)),
             [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b
         );
+
         return true;
     }
 
@@ -397,18 +398,74 @@ module BytePacking{
             casting to double is fine as any number that can be represented by float can be represented by double
             https://stackoverflow.com/questions/259015/can-every-float-be-expressed-exactly-as-a-double
         */
-        var output = FloorData.getBitsOfFloor(70466797557557426969903104.0d);
-        Test.assert(output.getTotalBitCount() == 86);
-        Test.assert(output.getBitCountBeforeTrailingZeros() == 24);
-        Test.assert(output.getLongEquivalent() == 15280051l );
-        Test.assert(output.getTrailingZeroCount() == 62);
+        var testDicts = [
+            {
+                :input=>70466797557557426969903104.0d,
+                :expectedTotalBitCount=>86,
+                :expectedBitCountBeforeTrailingZeros=>24,
+                :expectedLongEquivalent=>15280051l,
+                :expectedTrailingZeroCount=>62,
+            },
+            {
+                :input=>2.0d,
+                :expectedTotalBitCount=>2,
+                :expectedBitCountBeforeTrailingZeros=>1,
+                :expectedLongEquivalent=>1l,
+                :expectedTrailingZeroCount=>1,
+            },
+            {
+                :input=>1.0d,
+                :expectedTotalBitCount=>1,
+                :expectedBitCountBeforeTrailingZeros=>1,
+                :expectedLongEquivalent=>1l,
+                :expectedTrailingZeroCount=>0,
+            },
+            {
+                :input=>9587.0d,
+                :expectedTotalBitCount=>14,
+                :expectedBitCountBeforeTrailingZeros=>14,
+                :expectedLongEquivalent=>9587l,
+                :expectedTrailingZeroCount=>0,
+            },
+        ];
+        for(var i=0; i<testDicts.size(); i++){
+            var output = FloorData.getBitsOfFloor(testDicts[i][:input]);
+            Test.assert(output.getTotalBitCount() == testDicts[i][:expectedTotalBitCount]);
+            Test.assert(output.getBitCountBeforeTrailingZeros() == testDicts[i][:expectedBitCountBeforeTrailingZeros]);
+            Test.assert(output.getLongEquivalent() == testDicts[i][:expectedLongEquivalent]);
+            Test.assert(output.getTrailingZeroCount() == testDicts[i][:expectedTrailingZeroCount]);
+            Test.assert(output.getFloorOfBits() == testDicts[i][:input]);
+        }
+        return true;
+    }
 
-        output = FloorData.getBitsOfFloor(2.0d);
-        Test.assert(output.getTotalBitCount() == 2);
-        Test.assert(output.getBitCountBeforeTrailingZeros() == 1);
-        Test.assert(output.getLongEquivalent() == 1 );
-        Test.assert(output.getTrailingZeroCount() == 1);
-
+    (:test)
+    function UtilTest_newFloorData_basicTest(logger as Toybox.Test.Logger) as Boolean {
+        var testDicts = [
+            {
+                :longInput=>1l,
+                :totalBitCountInput=>1,
+                :expectedLongEquivalent=>1,
+                :getBitCountBeforeTrailingZeros=>1,
+            },
+            {
+                :longInput=>5l,
+                :totalBitCountInput=>3,
+                :expectedLongEquivalent=>5,
+                :getBitCountBeforeTrailingZeros=>3,
+            },
+            {
+                :longInput=>10l,
+                :totalBitCountInput=>4,
+                :expectedLongEquivalent=>5,
+                :getBitCountBeforeTrailingZeros=>3,
+            },
+        ];
+        for(var i=0; i<testDicts.size();i++){
+            var output = FloorData.newFloorData(testDicts[i][:longInput],testDicts[i][:totalBitCountInput]);
+            Test.assert(output.getLongEquivalent()==testDicts[i][:expectedLongEquivalent]);
+            Test.assert(output.getBitCountBeforeTrailingZeros()==testDicts[i][:getBitCountBeforeTrailingZeros] );
+        }
         return true;
     }
 

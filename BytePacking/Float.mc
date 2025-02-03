@@ -212,5 +212,62 @@ module BytePacking{
             */
             return BytePacking.Long.longToByteArray(longEquivalentInBitsOfInput).slice(BytePacking.BYTES_IN_FLOAT,null);
         }
+
+
+
+        function byteArrayToFloat(input as Toybox.Lang.ByteArray) as Toybox.Lang.Float {
+            // TODO: input validation
+
+            // TODO: inf/nan check
+
+            // all zeros? return 0f
+            var allZerosFourBytes = [0x00,0x00,0x00,0x00]b;
+            if(input == allZerosFourBytes){ // TODO test this
+                return 0f;
+            }
+
+            var output = 0f;
+            var longEquivalent = BytePacking.Long.byteArrayToLong(allZerosFourBytes.addAll(input));
+            
+
+            var isNegative = (longEquivalent >> (SHIFT_DUE_TO_FLOAT - 1)) == 1l;
+            // now remove the sign bit
+            longEquivalent = longEquivalent & longWithFirstNBitsZero( SHIFT_DUE_TO_FLOAT + 1);
+            var exponentValue = (longEquivalent >> BITS_IN_FLOAT_MANTISSA) - FLOAT_EXPONENT_BIAS;
+
+            var mantissaLong = ( longEquivalent ) & longWithFirstNBitsZero(64-23) ;
+            var mantissaLeadingOne = 1l << BITS_IN_FLOAT_MANTISSA;
+            mantissaLong = mantissaLong | mantissaLeadingOne;
+            System.println("a " + exponentValue);
+            if(exponentValue >= 0){
+                System.println("herehere");
+                if(exponentValue >= BITS_IN_FLOAT_MANTISSA){
+                    // purely an integer
+
+                    System.println(mantissaLong);
+                    var newFloorData = FloorData.newFloorData(mantissaLong,exponentValue+1);
+
+                    output = newFloorData.getFloorOfBits();
+                }
+            }
+            System.println("done");
+
+            // if exponent value > 0 then we have integer portion
+            /*
+            exponent value will tell us by how much we have to shift the mantissa long portion to the right where we also append a leading one
+            if exponent value < a certain number then we have decimal portion as well 
+            */
+
+            // else it is all just decimal
+            /*
+            ... subnormal handle if exponent equals minimal we assume leading 0, otherwise we assuming leading one
+            */
+
+            //TODO test inf/nan
+            if(isNegative){
+                output = output * -1;
+            }
+            return output;
+        }
     }
 }
