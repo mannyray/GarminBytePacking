@@ -162,7 +162,9 @@ module BytePacking{
                     :truncatedValueOfBinaryInDouble=>0.09999942779541015625d
             }),
             /*
-                TODO: explanation
+                Following two test cases are mirrors are the of the two prior but with the difference being in
+                maxArgument. We achieve the exact same output in the longEquivalent equivalent by just modifying 
+                maximumBitsAfterLeadingZeros to exclude the leading zero count.
             */
             new GetBitsOfDecimal_TestCase({
                     :doubleInput=>0.1d,
@@ -194,8 +196,6 @@ module BytePacking{
                     :binaryWithoutLeadingZeros=>"0",
                     :truncatedValueOfBinaryInDouble=>0d
             }),
-            //TODO: test case that highlights the difference between maxbits to maxbitsafterfirstone
-
         ];
         for(var i=0; i<testCases.size(); i++){
 
@@ -408,8 +408,6 @@ module BytePacking{
         Test.assert(output.getBitCountBeforeTrailingZeros() == 1);
         Test.assert(output.getLongEquivalent() == 1 );
         Test.assert(output.getTrailingZeroCount() == 1);
-
-        // TODO: more test cases once inverse of this function is implemented
 
         return true;
     }
