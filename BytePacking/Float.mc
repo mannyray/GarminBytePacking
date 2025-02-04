@@ -11,28 +11,24 @@ module BytePacking{
         https://www.wikihow.com/Convert-a-Number-from-Decimal-to-IEEE-754-Floating-Point-Representation
     */
 
-    class Float extends Toybox.Lang.Float{
+    class BPFloat extends Toybox.Lang.Float{
 
-        hidden const BITS_IN_FLOAT_EXPONENT = 8;
-        hidden const BITS_IN_FLOAT_MANTISSA = 23;
-        hidden const FLOAT_EXPONENT_BIAS = 127;
-        hidden const MINIMAL_FLOAT_EXPONENT = -127;
-        hidden const BITS_IN_SIGN = 1;
 
-        hidden const LEADING_ONE_OUTSIDE_MANTISSA_BIT = 1;
-        hidden const SHIFT_DUE_TO_FLOAT=32;
+        function initialize(){
+            Float.initialize();
+        }
 
         /*
             Converts a float to ENDIAN_BIG style format.
             See https://www.h-schmidt.net/FloatConverter/IEEE754.html for example.
         */
-        function floatToByteArray(input as Toybox.Lang.Float) as Toybox.Lang.ByteArray {
+        static function floatToByteArray(input as Toybox.Lang.Float) as Toybox.Lang.ByteArray {
 
-            var BITS_IN_MANTISSA = BITS_IN_FLOAT_MANTISSA;
-            var MINIMAL_EXPONENT = MINIMAL_FLOAT_EXPONENT;
-            var EXPONENT_BIAS = FLOAT_EXPONENT_BIAS;
-            var BITS_IN_EXPONENT = BITS_IN_FLOAT_EXPONENT;
-            var PARSING_SHIFT = SHIFT_DUE_TO_FLOAT;
+            var BITS_IN_MANTISSA = BytePacking.BITS_IN_FLOAT_MANTISSA;
+            var MINIMAL_EXPONENT = BytePacking.MINIMAL_FLOAT_EXPONENT;
+            var EXPONENT_BIAS = BytePacking.FLOAT_EXPONENT_BIAS;
+            var BITS_IN_EXPONENT = BytePacking.BITS_IN_FLOAT_EXPONENT;
+            var PARSING_SHIFT = BytePacking.SHIFT_DUE_TO_FLOAT;
 
             if(!(input instanceof Toybox.Lang.Float) ){
                 throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Float argument type",null,null);
@@ -41,7 +37,7 @@ module BytePacking{
                 throw new Toybox.Lang.InvalidValueException("Input cannot be inf or nan");
             }
             if( input.toDouble() == 0){
-                // special sepate case, because the exponent is set to zero
+                // special separate case, because the exponent is set to zero - TODO: subnormal inclusive?
                 return [0x00,0x00,0x00,0x00]b;
             }
 
@@ -149,7 +145,7 @@ module BytePacking{
             else{ // We are allowed to use all mantissa bits for the decimal portion as there is no integer portion
                 
                 //plus LEADING_ONE_OUTSIDE_MANTISSA_BIT because the first bit is "free" or "implicit" in IEEE 754 notation
-                var decimalData = DecimalData.getBitsOfDecimal(input.abs().toDouble(), {:maximumBitsAfterLeadingZeros => BITS_IN_MANTISSA+LEADING_ONE_OUTSIDE_MANTISSA_BIT});
+                var decimalData = DecimalData.getBitsOfDecimal(input.abs().toDouble(), {:maximumBitsAfterLeadingZeros => BITS_IN_MANTISSA+BytePacking.LEADING_ONE_OUTSIDE_MANTISSA_BIT});
                 var decimalPortionInProperBitLocation = decimalData.getLongEquivalent();
 
                 /*
@@ -161,9 +157,9 @@ module BytePacking{
                     which is (decimalData.bitCountAfterFirstOne - decimalData.totalBitCount) and then subtract the
                     additional -1 to get the leading one "1" over the "."
                 */
-                var exponentValue = decimalData.getBitCountAfterLeadingZeros() - decimalData.getTotalBitCount()-LEADING_ONE_OUTSIDE_MANTISSA_BIT;
+                var exponentValue = decimalData.getBitCountAfterLeadingZeros() - decimalData.getTotalBitCount()-BytePacking.LEADING_ONE_OUTSIDE_MANTISSA_BIT;
 
-                if( decimalData.getBitCountAfterLeadingZeros() < BITS_IN_MANTISSA+LEADING_ONE_OUTSIDE_MANTISSA_BIT){
+                if( decimalData.getBitCountAfterLeadingZeros() < BITS_IN_MANTISSA+BytePacking.LEADING_ONE_OUTSIDE_MANTISSA_BIT){
                     /*
                         the digits required to store the decimal portion are smaller than the permitted 
                         amount in MANTISSA. To account for this we just left shift all the value and the tail end
@@ -177,7 +173,7 @@ module BytePacking{
                             https://en.wikipedia.org/wiki/Subnormal_number where subnormals
                             have an exponent equal to MINIMAL_EXPONENT
                         */
-                        shift = (BITS_IN_MANTISSA - decimalData.getBitCountAfterLeadingZeros())+LEADING_ONE_OUTSIDE_MANTISSA_BIT;
+                        shift = (BITS_IN_MANTISSA - decimalData.getBitCountAfterLeadingZeros())+BytePacking.LEADING_ONE_OUTSIDE_MANTISSA_BIT;
                     }
                     else{
                         // subnormal number
@@ -195,7 +191,7 @@ module BytePacking{
                     due to "decimalData.getBitCountAfterLeadingZeros() == BITS_IN_MANTISSA+LEADING_ONE_OUTSIDE_MANTISSA_BIT" condition.
                     PARSING_SHIFT in case we are manipulating longs which are 64 bits long, while we are only working the tail 32 bits for floats
                 */
-                decimalPortionInProperBitLocation = decimalPortionInProperBitLocation && longWithFirstNBitsZero(PARSING_SHIFT + BITS_IN_EXPONENT + BITS_IN_SIGN);
+                decimalPortionInProperBitLocation = decimalPortionInProperBitLocation & longWithFirstNBitsZero(PARSING_SHIFT + BITS_IN_EXPONENT + BytePacking.BITS_IN_SIGN);
 
                 var exponentValueInProperBitLocation = (exponentValue + EXPONENT_BIAS).toLong() << BITS_IN_MANTISSA;
                 longEquivalentInBitsOfInput = exponentValueInProperBitLocation | decimalPortionInProperBitLocation;
@@ -203,18 +199,18 @@ module BytePacking{
 
             if(isNegative){
                 // The leading bit in IEEE 754 is for the sign. If negative, we turn this bit ON.
-                longEquivalentInBitsOfInput = longEquivalentInBitsOfInput | longWithFirstNBitsOne(PARSING_SHIFT + BITS_IN_SIGN);
+                longEquivalentInBitsOfInput = longEquivalentInBitsOfInput | longWithFirstNBitsOne(PARSING_SHIFT + BytePacking.BITS_IN_SIGN);
             }
             /*
                 We were doing our bit manipulation usings long due to ease of running bit shifting and logical OR operations
                 However, long is 64 bits while float is 32 in our long the float portion is stored in the second half
                 which is why we return the slice (i.e. second half of the byte array)
             */
-            return BytePacking.Long.longToByteArray(longEquivalentInBitsOfInput).slice(BytePacking.BYTES_IN_FLOAT,null);
+            return BytePacking.BPLong.longToByteArray(longEquivalentInBitsOfInput).slice(BytePacking.BYTES_IN_FLOAT,null);
         }
 
 
-        function byteArrayToFloat(input as Toybox.Lang.ByteArray) as Toybox.Lang.Float {
+        static function byteArrayToFloat(input as Toybox.Lang.ByteArray) as Toybox.Lang.Float {
             // TODO: input validation
 
             // TODO: inf/nan check
@@ -222,18 +218,22 @@ module BytePacking{
             // all zeros? return 0f
             var allZerosFourBytes = [0x00,0x00,0x00,0x00]b;
             if(input == allZerosFourBytes){ // TODO test this
-                return 0f;
+                return 0f;//TODO: subnormal inclusive?
             }
 
             var output = 0f;
-            var longEquivalent = BytePacking.Long.byteArrayToLong(allZerosFourBytes.addAll(input));
+            var longEquivalent = BytePacking.BPLong.byteArrayToLong(allZerosFourBytes.addAll(input));
             
 
             var isNegative = (longEquivalent >> (SHIFT_DUE_TO_FLOAT - 1)) == 1l;
             // now remove the sign bit
             longEquivalent = longEquivalent & longWithFirstNBitsZero( SHIFT_DUE_TO_FLOAT + 1);
             var exponentValue = ( (longEquivalent >> BITS_IN_FLOAT_MANTISSA) - FLOAT_EXPONENT_BIAS ).toNumber();
+            //TODO test inf/nan
 
+            //TODO: generalize for double and float
+
+            // TODO commenting
             var mantissaLong = ( longEquivalent ) & longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA) ;
             var mantissaLeadingOne = 1l << BITS_IN_FLOAT_MANTISSA;
             mantissaLong = mantissaLong | mantissaLeadingOne;
@@ -263,7 +263,7 @@ module BytePacking{
                 }
             }            
 
-            //TODO test inf/nan
+            
             if(isNegative){
                 output = output * -1;
             }

@@ -3,7 +3,7 @@ import Toybox.System;
 import Toybox.Lang;
 import Toybox.Math;
 
-module BytePacking{
+module BytePackingTesting{
    
    /*
    Test case creation assisted with
@@ -12,14 +12,14 @@ module BytePacking{
 
     var expectedArray = new [4]b;
     function testTwoWayASingleFloat(float as Toybox.Lang.Float){
-        var computedArray = BytePacking.Float.floatToByteArray(float);
+        var computedArray = BytePacking.BPFloat.floatToByteArray(float);
         var decoded = computedArray.decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG});
         
         expectedArray.encodeNumber(float,Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG});
         assertEquivalencyBetweenByteArraysFloat(expectedArray,computedArray);
 
         Test.assertEqual(float,decoded);
-        Test.assertEqual(float,BytePacking.Float.byteArrayToFloat(computedArray));
+        Test.assertEqual(float,BytePacking.BPFloat.byteArrayToFloat(computedArray));
     }
 
     (:test)
@@ -32,7 +32,7 @@ module BytePacking{
         var nextPercentage = 0.1;
         while(counter < max){
             counter = counter + 1;
-            var number = BytePacking.Long.longToByteArray( Math.rand().toLong() ).slice(4,null).decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG});
+            var number = BytePacking.BPLong.longToByteArray( Math.rand().toLong() ).slice(4,null).decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG});
             //System.println("test number "+number);
             if(counter.toDouble()/max.toDouble() >= nextPercentage){
                 System.println(nextPercentage*100.0 + ". Took " + (System.getTimer()-currentPercentageStartTime).toDouble()/1000d +" seconds." );

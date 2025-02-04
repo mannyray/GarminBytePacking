@@ -3,14 +3,14 @@ import Toybox.System;
 import Toybox.Lang;
 import Toybox.Math;
 
-module BytePacking{
+module BytePackingTesting{
     (:test)
     function UtilTest_basic_BinaryDataPair_Test(logger as Toybox.Test.Logger) as Boolean {
         // random test case sourced from chatgpt including 0 and biggest number edge cases
         var numbers = [523l, 8129l, 349l, 2380l, 654321l, 9237l, 173l, 12981l, 4659l, 1024l, 0l, 9223372036854775807l];
         var bitsRequired = [10, 13, 9, 12, 20, 14, 8, 14, 13, 11, 0, 63];
         for(var i=0; i<numbers.size(); i++){
-            var bdp = new BinaryDataPair(numbers[i]);
+            var bdp = new BytePacking.BinaryDataPair(numbers[i]);
             Test.assertEqual(bdp.bitCount,bitsRequired[i]);
             Test.assertEqual(bdp.long,numbers[i]);
         }
@@ -20,7 +20,7 @@ module BytePacking{
     (:test)
     function UtilTest_invalidInput_BinaryDataPair_Test(logger as Toybox.Test.Logger) as Boolean {
         try {
-            new BinaryDataPair(100);
+            new BytePacking.BinaryDataPair(100);
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting Toybox.Lang.Long argument type";
@@ -35,7 +35,7 @@ module BytePacking{
         }
 
         try {
-            new BinaryDataPair(-100l);
+            new BytePacking.BinaryDataPair(-100l);
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting a non negative long";
@@ -199,7 +199,7 @@ module BytePacking{
         ];
         for(var i=0; i<testCases.size(); i++){
 
-            var output =  DecimalData.getBitsOfDecimal(testCases[i].double,testCases[i].maxArgument );
+            var output =  BytePacking.DecimalData.getBitsOfDecimal(testCases[i].double,testCases[i].maxArgument );
             Test.assertEqualMessage(output.getTotalBitCount(),testCases[i].bitsRequired,
                 Toybox.Lang.format(
                     "Requiring $1$ bits to store $2$ (binary version: $3$), but got $4$ bits computed.",
@@ -232,7 +232,7 @@ module BytePacking{
     function UtilTest_invalidInput_getBitsOfDecimal_Test(logger as Toybox.Test.Logger) as Boolean {
         var randomDepth = 10;
         try {
-            DecimalData.getBitsOfDecimal(0.123f,{:maximumBits => randomDepth} );//supposed to be a double and a float
+            BytePacking.DecimalData.getBitsOfDecimal(0.123f,{:maximumBits => randomDepth} );//supposed to be a double and a float
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting Toybox.Lang.Double argument type as first argument";
@@ -247,7 +247,7 @@ module BytePacking{
         }
 
         try {
-            DecimalData.getBitsOfDecimal(1d,{:maximumBits => randomDepth} );
+            BytePacking.DecimalData.getBitsOfDecimal(1d,{:maximumBits => randomDepth} );
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1) as first argument";
@@ -262,7 +262,7 @@ module BytePacking{
         }
 
         try {
-            DecimalData.getBitsOfDecimal(-0.123d,{:maximumBits => randomDepth} );
+            BytePacking.DecimalData.getBitsOfDecimal(-0.123d,{:maximumBits => randomDepth} );
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1) as first argument";
@@ -303,7 +303,7 @@ module BytePacking{
 
         for(var i=0; i<invalidDictionaries.size(); i++ ){
             try {
-                DecimalData.getBitsOfDecimal(0.123d,invalidDictionaries[i] );
+                BytePacking.DecimalData.getBitsOfDecimal(0.123d,invalidDictionaries[i] );
             } catch (e instanceof Toybox.Lang.Exception) {
                 var acquiredErrorMessage = e.getErrorMessage();
                 var expectedErrorMessage = expectedErrorMessages[i];
@@ -324,27 +324,27 @@ module BytePacking{
     (:test)
     function UtilTest_longWithFirstNBitsOne_Test(logger as Toybox.Test.Logger) as Boolean {
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(1)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsOne(1)),
             [0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(3)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsOne(3)),
             [0xE0,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(15)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsOne(15)),
             [0xFF,0xFE,0x00,0x00,0x00,0x00,0x00,0x00]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(16)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsOne(16)),
             [0xFF,0xFF,0x00,0x00,0x00,0x00,0x00,0x00]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(63)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsOne(63)),
             [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFE]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsOne(64)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsOne(64)),
             [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
         );
         return true;
@@ -353,27 +353,27 @@ module BytePacking{
     (:test)
     function UtilTest_longWithFirstNBitsZero_Test(logger as Toybox.Test.Logger) as Boolean {
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(1)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsZero(1)),
             [0x7F,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(3)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsZero(3)),
             [0x1F,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(15)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsZero(15)),
             [0x00,0x01,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(16)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsZero(16)),
             [0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(63)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsZero(63)),
             [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01]b
         );
         assertEquivalencyBetweenByteArrays(
-            BytePacking.Long.longToByteArray(longWithFirstNBitsZero(64)),
+            BytePacking.BPLong.longToByteArray(BytePacking.longWithFirstNBitsZero(64)),
             [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b
         );
 
@@ -429,7 +429,7 @@ module BytePacking{
             },
         ];
         for(var i=0; i<testDicts.size(); i++){
-            var output = FloorData.getBitsOfFloor(testDicts[i][:input]);
+            var output = BytePacking.FloorData.getBitsOfFloor(testDicts[i][:input]);
             Test.assert(output.getTotalBitCount() == testDicts[i][:expectedTotalBitCount]);
             Test.assert(output.getBitCountBeforeTrailingZeros() == testDicts[i][:expectedBitCountBeforeTrailingZeros]);
             Test.assert(output.getLongEquivalent() == testDicts[i][:expectedLongEquivalent]);
@@ -462,7 +462,7 @@ module BytePacking{
             },
         ];
         for(var i=0; i<testDicts.size();i++){
-            var output = FloorData.newFloorData(testDicts[i][:longInput],testDicts[i][:totalBitCountInput]);
+            var output = BytePacking.FloorData.newFloorData(testDicts[i][:longInput],testDicts[i][:totalBitCountInput]);
             Test.assert(output.getLongEquivalent()==testDicts[i][:expectedLongEquivalent]);
             Test.assert(output.getBitCountBeforeTrailingZeros()==testDicts[i][:getBitCountBeforeTrailingZeros] );
         }
@@ -488,7 +488,7 @@ module BytePacking{
         ];
         for(var i=0; i<wrongInputs.size();i++){
             try {
-                FloorData.getBitsOfFloor(wrongInputs[i]);//supposed to be a double and a float
+                BytePacking.FloorData.getBitsOfFloor(wrongInputs[i]);//supposed to be a double and a float
             } catch (e instanceof Toybox.Lang.Exception) {
                 var acquiredErrorMessage = e.getErrorMessage();
                 var expectedErrorMessage = expectedErrors[i];
@@ -507,12 +507,12 @@ module BytePacking{
 
     (:test)
     function UtilTest_nan_inf_Test(logger as Toybox.Test.Logger) as Boolean {
-        Test.assert(!isnan(1d));
-        Test.assert(!isnan(1f));
-        Test.assert(isnan(Math.acos(45d)));
+        Test.assert(!BytePacking.isnan(1d));
+        Test.assert(!BytePacking.isnan(1f));
+        Test.assert(BytePacking.isnan(Math.acos(45d)));
 
         var infArr = [0x7f,0x80, 0x00, 0x00]b;
-        Test.assert(isinf(infArr.decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG})));
+        Test.assert(BytePacking.isinf(infArr.decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG})));
         return true;
     }
 }

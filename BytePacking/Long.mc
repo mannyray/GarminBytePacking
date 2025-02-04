@@ -14,10 +14,14 @@ module BytePacking{
         Inspiration for code from 
         https://forums.garmin.com/developer/connect-iq/f/discussion/223920/trying-to-pack-a-long-64-bit-signed-integer-with-bytes
     */
-    class Long extends Toybox.Lang.Long{
+    class BPLong extends Toybox.Lang.Long{
         hidden const BYTE_SIZE as Number = 8;// TODO put this in some more global file?
         hidden const BITS_IN_LONG as Number = 64;
         hidden const BYTES_IN_LONG as Number = BITS_IN_LONG/BYTE_SIZE;
+
+        function initialize(){
+            Long.initialize();
+        }
 
         /*
             Converts a long to a byte array of size 8 since long is 64 bits long.
@@ -28,7 +32,7 @@ module BytePacking{
             but is not due to symbol not found runtime errors:
             https://forums.garmin.com/developer/connect-iq/i/bug-reports/compiler-bug-cannot-compile-classes-with-static-functions
         */
-        function longToByteArray(input as Toybox.Lang.Long) as Toybox.Lang.ByteArray {
+        static function longToByteArray(input as Toybox.Lang.Long) as Toybox.Lang.ByteArray {
 
             if(!(input instanceof Toybox.Lang.Long) ){
                 /*
@@ -39,9 +43,9 @@ module BytePacking{
                 throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Long argument type",null,null);
             }
 
-            var byteArray = new[BytePacking.Long.BYTES_IN_LONG]b;//b for byte data type
+            var byteArray = new[BytePacking.BPLong.BYTES_IN_LONG]b;//b for byte data type
 
-            for(var arrayIndex = 0; arrayIndex<BytePacking.Long.BYTES_IN_LONG; arrayIndex++){
+            for(var arrayIndex = 0; arrayIndex<BytePacking.BPLong.BYTES_IN_LONG; arrayIndex++){
                 /*
                     offset moves the input long so many bits over 'to the right'
                     via the >> operator in order to bit-operator-AND 
@@ -50,7 +54,7 @@ module BytePacking{
                     when arrayIndex == 0, offset is 56 which denotes the first 
                     byte (from 0 to 8 bits)
                 */
-                var offset = BytePacking.Long.BITS_IN_LONG-BytePacking.Long.BYTE_SIZE*(arrayIndex+1);
+                var offset = BytePacking.BPLong.BITS_IN_LONG-BytePacking.BPLong.BYTE_SIZE*(arrayIndex+1);
 
                 /*
                     the 0's are technically uncessary in 0x00000000000000ff,
@@ -75,8 +79,8 @@ module BytePacking{
             but is not due to symbol not found runtime errors:
             https://forums.garmin.com/developer/connect-iq/i/bug-reports/compiler-bug-cannot-compile-classes-with-static-functions
         */
-        function byteArrayToLong(input as ByteArray) as Toybox.Lang.Long{
-            if(input.size()!=BytePacking.Long.BYTES_IN_LONG){
+        static function byteArrayToLong(input as ByteArray) as Toybox.Lang.Long{
+            if(input.size()!=BytePacking.BPLong.BYTES_IN_LONG){
                 throw new Toybox.Lang.InvalidValueException(Toybox.Lang.format("Byte array should be of size 8 and not: $1$", [input.size()]));
             }
 
@@ -85,7 +89,7 @@ module BytePacking{
             for(var arrayIndex = 0; arrayIndex<input.size(); arrayIndex++){
 
                 // for offset, same reasoning as in longToByteArray
-                var offset = BytePacking.Long.BITS_IN_LONG-BytePacking.Long.BYTE_SIZE*(arrayIndex+1);
+                var offset = BytePacking.BPLong.BITS_IN_LONG-BytePacking.BPLong.BYTE_SIZE*(arrayIndex+1);
 
                 /*
                     using logical OR operator (|), we can combine the various bytes together

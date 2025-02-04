@@ -2,7 +2,7 @@ using Toybox.Test as Test;
 import Toybox.System;
 import Toybox.Lang;
 
-module BytePacking{
+module BytePackingTesting{
 
     
     (:test)

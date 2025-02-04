@@ -2,7 +2,7 @@ using Toybox.Test as Test;
 import Toybox.System;
 import Toybox.Lang;
 
-module BytePacking{
+module BytePackingTesting{
     /*
     Test cases formulated with the help of
     https://www.rapidtables.com/convert/number/decimal-to-binary.html
@@ -10,21 +10,7 @@ module BytePacking{
     https://www.rapidtables.com/convert/number/binary-to-hex.html
     */
 
-    function byteArrayToHexArrayString(arr as Toybox.Lang.ByteArray) as String{
-        var outputString = "[";
-        for(var arrayIndex=0; arrayIndex<arr.size(); arrayIndex++){
-            outputString = outputString + "0x" +arr[arrayIndex].format("%x") +",";
-        }
-        outputString = outputString + "]";
-        return outputString;
-    }
-
-    function assertEquivalencyBetweenByteArrays(arr1 as Toybox.Lang.ByteArray,arr2 as Toybox.Lang.ByteArray){
-        Test.assertEqual(arr1.size(),arr2.size());
-        for(var i=0; i<arr1.size(); i++){
-            Test.assertEqualMessage(arr1[i],arr2[i],byteArrayToHexArrayString(arr1) + " versus " + byteArrayToHexArrayString(arr2));
-        }
-    }
+    
 
     (:test)
     function basicTest(logger as Toybox.Test.Logger) as Boolean {
@@ -49,12 +35,12 @@ module BytePacking{
         */
         
         var expectedArray = [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x64]b;
-        var computedArray = BytePacking.Long.longToByteArray(longNumber);
+        var computedArray = BytePacking.BPLong.longToByteArray(longNumber);
         assertEquivalencyBetweenByteArrays(expectedArray,computedArray);
         
 
         // now see if we can get the original number back from the byte array
-        var newLongNumber = BytePacking.Long.byteArrayToLong(computedArray);
+        var newLongNumber = BytePacking.BPLong.byteArrayToLong(computedArray);
         Test.assertEqual(longNumber,newLongNumber);
 
         return true;
@@ -64,9 +50,9 @@ module BytePacking{
     function zeroTest(logger as Toybox.Test.Logger) as Boolean {
         var zero = 0l;
         var zeroExpectedByteArray = [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b;
-        var zeroComputedByteArray = BytePacking.Long.longToByteArray(zero);
+        var zeroComputedByteArray = BytePacking.BPLong.longToByteArray(zero);
         assertEquivalencyBetweenByteArrays(zeroExpectedByteArray,zeroComputedByteArray);
-        var newZero = BytePacking.Long.byteArrayToLong(zeroComputedByteArray);
+        var newZero = BytePacking.BPLong.byteArrayToLong(zeroComputedByteArray);
         Test.assertEqual(zero,newZero);
 
         return true;
@@ -76,16 +62,16 @@ module BytePacking{
     function bigAbsoluteValueNumberTest(logger as Toybox.Test.Logger) as Boolean {
         var biggestNumber = 9223372036854775807l;
         var biggestNumberExpectedByteArray = [0x7f,0xff,0xff,0xff,0xff,0xff,0xff,0xff]b;
-        var biggestNumberComputedByteArray = BytePacking.Long.longToByteArray(biggestNumber);
+        var biggestNumberComputedByteArray = BytePacking.BPLong.longToByteArray(biggestNumber);
         assertEquivalencyBetweenByteArrays(biggestNumberExpectedByteArray,biggestNumberComputedByteArray);
-        var newBiggestNumber = BytePacking.Long.byteArrayToLong(biggestNumberComputedByteArray);
+        var newBiggestNumber = BytePacking.BPLong.byteArrayToLong(biggestNumberComputedByteArray);
         Test.assertEqual(biggestNumber,newBiggestNumber);
 
         var smallestNumber = -9223372036854775808l;
         var smallestNumberExpectedByteArray = [0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b;
-        var smallestNumberComputedByteArray = BytePacking.Long.longToByteArray(smallestNumber);
+        var smallestNumberComputedByteArray = BytePacking.BPLong.longToByteArray(smallestNumber);
         assertEquivalencyBetweenByteArrays(smallestNumberExpectedByteArray,smallestNumberComputedByteArray);
-        var newSmallesttNumber = BytePacking.Long.byteArrayToLong(smallestNumberComputedByteArray);
+        var newSmallesttNumber = BytePacking.BPLong.byteArrayToLong(smallestNumberComputedByteArray);
         Test.assertEqual(smallestNumber,newSmallesttNumber);
 
         return true;
@@ -95,16 +81,16 @@ module BytePacking{
     function randomNumberTest(logger as Toybox.Test.Logger) as Boolean {
         var randomNumber = 2341698761234l;
         var randomNumberExpectedArray = [0x00,0x00,0x02,0x21,0x38,0x1F,0x72,0x12];
-        var randomNumberComputedArray = BytePacking.Long.longToByteArray(randomNumber);
+        var randomNumberComputedArray = BytePacking.BPLong.longToByteArray(randomNumber);
         assertEquivalencyBetweenByteArrays(randomNumberExpectedArray,randomNumberComputedArray);
-        var newRandomNumber = BytePacking.Long.byteArrayToLong(randomNumberComputedArray);
+        var newRandomNumber = BytePacking.BPLong.byteArrayToLong(randomNumberComputedArray);
         Test.assertEqual(randomNumber,newRandomNumber);
 
         var randomNumberNegative = -1*randomNumber;
         var randomNumberNegativeExpectedArray = [0xFF,0xFF,0xFD, 0xDE, 0xC7, 0xE0, 0x8D, 0xEE];
-        var randomNumberNegativeComputedArray =  BytePacking.Long.longToByteArray(randomNumberNegative);
+        var randomNumberNegativeComputedArray =  BytePacking.BPLong.longToByteArray(randomNumberNegative);
         assertEquivalencyBetweenByteArrays(randomNumberNegativeExpectedArray,randomNumberNegativeComputedArray);
-        var newRandomNumberNegative = BytePacking.Long.byteArrayToLong(randomNumberNegativeComputedArray);
+        var newRandomNumberNegative = BytePacking.BPLong.byteArrayToLong(randomNumberNegativeComputedArray);
         Test.assertEqual(randomNumberNegative,newRandomNumberNegative);
         return true;
     }
@@ -113,7 +99,7 @@ module BytePacking{
     function errorTest(logger as Toybox.Test.Logger) as Boolean {
         var randomButTooShortInputArray = [0xFF,0xFF,0xFD, 0xDE, 0xC7, 0xE0, 0x8D]b;
         try {
-            BytePacking.Long.byteArrayToLong(randomButTooShortInputArray);
+            BytePacking.BPLong.byteArrayToLong(randomButTooShortInputArray);
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Byte array should be of size 8 and not: 7";
@@ -133,7 +119,7 @@ module BytePacking{
     function wrongInputTypeTest(logger as Toybox.Test.Logger) as Boolean {
         try {
             var notALongNumber = 100.09;
-            BytePacking.Long.longToByteArray(notALongNumber);
+            BytePacking.BPLong.longToByteArray(notALongNumber);
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting Toybox.Lang.Long argument type";
@@ -149,7 +135,7 @@ module BytePacking{
     
        try {
             var notALongNumber = 100;//a "Number" type
-            BytePacking.Long.longToByteArray(notALongNumber);
+            BytePacking.BPLong.longToByteArray(notALongNumber);
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting Toybox.Lang.Long argument type";
@@ -172,12 +158,12 @@ module BytePacking{
         test if we can chain on Long methods to BytePacking.Long methods. Not a controversial test
         since the output of byteArrayToLong _is_ a Toybox.Lang.Long.
         */
-        Test.assert(BytePacking.Long.byteArrayToLong(BytePacking.Long.longToByteArray(100l)).equals(100l));
+        Test.assert(BytePacking.BPLong.byteArrayToLong(BytePacking.BPLong.longToByteArray(100l)).equals(100l));
 
         Test.assert(false == (100l).equals(100 as Number));
         // just as 100 Long is not the same as a 100 Number then
         // so is 100 BytePacking.Long not the same as 100 Long
-        var testVar = 100 as BytePacking.Long;
+        var testVar = 100 as BytePacking.BPLong;
         Test.assert(false == testVar.equals(100l));
 
         /*

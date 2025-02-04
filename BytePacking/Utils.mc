@@ -261,7 +261,7 @@ module BytePacking{
             bitCountAfterLeadingZeros = bcafo;
         }
 
-        function newDecimalData(longInput as Toybox.Lang.Long, bitCountMax as Toybox.Lang.Number) as DecimalData{
+        static function newDecimalData(longInput as Toybox.Lang.Long, bitCountMax as Toybox.Lang.Number) as DecimalData{
             /*
                 Create a DecimalData object from unclean input in the case.
 
@@ -270,7 +270,7 @@ module BytePacking{
                 The trailing three 0s are unecessary so the the following output should be
                 long=1,totalBitCount=4,bitCountAfterLeadingZeros=1 
             */
-            if(!(longInput instanceof Toybox.Lang.Long) ){
+            if(!(longInput instanceof Toybox.Lang.Long) ){//TODO: test
                 /*
                     Necessary, to avoid unexpected behaviour if user supplies a Number for example.
                 */
@@ -278,7 +278,7 @@ module BytePacking{
             }//TODO positive long
 
             if(longInput == 0){
-                return new DecimalData(0,0,0);
+                return new DecimalData(0l,0,0);
             }
 
             var onlyRightmostBitOne = 1l;
@@ -464,7 +464,7 @@ module BytePacking{
                     which in the double has the equivalent effect of bit shiffting the decimal bits
                     'deeper' to the right.
                 */
-                var isFirstBitOne = 1 == (1l && longCopy);
+                var isFirstBitOne = 1 == (1l & longCopy);
 
                 if(isFirstBitOne){
                     output = output + 1;
