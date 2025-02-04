@@ -3,9 +3,11 @@ import Toybox.Lang;
 module BytePacking{
     const BYTE_SIZE as Number = 8;
     const BITS_IN_FLOAT as Number = 32;
+    const BITS_IN_DOUBLE as Number = 64;
     const BITS_IN_LONG as Number = 64;
     const BYTES_IN_FLOAT as Number = BITS_IN_FLOAT/BYTE_SIZE;
     const BYTES_IN_LONG as Number = BITS_IN_LONG/BYTE_SIZE;
+    const BYTES_IN_DOUBLE as Number = BITS_IN_DOUBLE/BYTE_SIZE;
 
 
     const BITS_IN_FLOAT_MANTISSA = 23;
@@ -22,4 +24,5 @@ module BytePacking{
     const LEADING_ONE_OUTSIDE_MANTISSA_BIT = 1;
     const BITS_IN_SIGN = 1;
     const FLOAT_ALL_ONES_EXPONENT = 255;
+    const DOUBLE_ALL_ONES_EXPONENT = 2047;
 }

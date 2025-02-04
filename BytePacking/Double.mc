@@ -37,7 +37,30 @@ module BytePacking{
             var PARSING_SHIFT = 0;
 
             return BytePacking.BPFloat.genericToByteArray(input,BITS_IN_MANTISSA,MINIMAL_EXPONENT,EXPONENT_BIAS,BITS_IN_EXPONENT,PARSING_SHIFT);
-            
+        }
+
+
+        static function byteArrayToDouble(input as Toybox.Lang.ByteArray) as Toybox.Lang.Double{
+
+            if(!(input instanceof Toybox.Lang.ByteArray) ){
+                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.ByteArray argument type",null,null);
+            }
+
+            if(input.size()!=BytePacking.BYTES_IN_DOUBLE){
+                throw new Toybox.Lang.InvalidValueException("Need 4 bytes to convert to float");
+            }
+
+            var allZerosEightBytes = [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b;
+            if(input == allZerosEightBytes){
+                return 0d;
+            }
+            var BITS_IN_MANTISSA = BytePacking.BITS_IN_DOUBLE_MANTISSA;
+            var MINIMAL_EXPONENT = BytePacking.MINIMAL_DOUBLE_EXPONENT;
+            var EXPONENT_BIAS = BytePacking.DOUBLE_EXPONENT_BIAS;
+            var PARSING_SHIFT = 0;
+            var ALL_ONES_EXPONENT = BytePacking.DOUBLE_ALL_ONES_EXPONENT;
+
+            return BytePacking.BPFloat.byteArrayToGeneric(input,BITS_IN_MANTISSA,MINIMAL_EXPONENT,EXPONENT_BIAS,PARSING_SHIFT,ALL_ONES_EXPONENT);
         }
     }
 }

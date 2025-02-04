@@ -26,7 +26,7 @@ module BytePackingTesting{
     function FloatTest_smokeTest(logger as Toybox.Test.Logger) as Boolean {
         Math.srand(0);
         var counter = 0;
-        var max = 100;
+        var max = 10000;
         var startTime = System.getTimer();
         var currentPercentageStartTime = startTime;
         var nextPercentage = 0.1;

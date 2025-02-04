@@ -39,7 +39,6 @@ module BytePacking{
             var PARSING_SHIFT = BytePacking.SHIFT_DUE_TO_FLOAT;
 
             return genericToByteArray(input.toDouble(),BITS_IN_MANTISSA,MINIMAL_EXPONENT,EXPONENT_BIAS,BITS_IN_EXPONENT,PARSING_SHIFT);
-            
         }
 
         static function genericToByteArray(input as Toybox.Lang.Double,
@@ -227,13 +226,13 @@ module BytePacking{
             return BytePacking.BPLong.longToByteArray(longEquivalentInBitsOfInput);
         }
 
+        static function byteArrayToFloat(input as Toybox.Lang.ByteArray) as Toybox.Lang.Float{
 
-        static function byteArrayToFloat(input as Toybox.Lang.ByteArray) as Toybox.Lang.Float {
             if(!(input instanceof Toybox.Lang.ByteArray) ){
                 throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.ByteArray argument type",null,null);
             }
 
-            if(input.size()!=4){
+            if(input.size()!=BytePacking.BYTES_IN_FLOAT){
                 throw new Toybox.Lang.InvalidValueException("Need 4 bytes to convert to float");
             }
 
@@ -241,33 +240,60 @@ module BytePacking{
             if(input == allZerosFourBytes){
                 return 0f;
             }
+            var BITS_IN_MANTISSA = BytePacking.BITS_IN_FLOAT_MANTISSA;
+            var MINIMAL_EXPONENT = BytePacking.MINIMAL_FLOAT_EXPONENT;
+            var EXPONENT_BIAS = BytePacking.FLOAT_EXPONENT_BIAS;
+            var PARSING_SHIFT = BytePacking.SHIFT_DUE_TO_FLOAT;
+            var ALL_ONES_EXPONENT = BytePacking.FLOAT_ALL_ONES_EXPONENT;
+
+            return byteArrayToGeneric(input,BITS_IN_MANTISSA,MINIMAL_EXPONENT,EXPONENT_BIAS,PARSING_SHIFT,ALL_ONES_EXPONENT).toFloat();
+        }
+
+        static function byteArrayToGeneric(input as Toybox.Lang.ByteArray,
+            BITS_IN_MANTISSA as Toybox.Lang.Number,
+            MINIMAL_EXPONENT as Toybox.Lang.Number,
+            EXPONENT_BIAS as Toybox.Lang.Number,
+            PARSING_SHIFT as Toybox.Lang.Number,
+            ALL_ONES_EXPONENT as Toybox.Lang.Number
+        ) as Toybox.Lang.Double {
 
             var output = 0f;
 
             // we convert to long as longs are useful for bit manitpulation operators (>>,>>,|,&) and
             // since float array is 4 bytes we add another 4 for a succesfull to long conversion.
             // We will ignore the tail bits.
-            var longEquivalent = BytePacking.BPLong.byteArrayToLong(allZerosFourBytes.addAll(input));
+            if(PARSING_SHIFT!=0){
+                var allZerosFourBytes = [0x00,0x00,0x00,0x00]b;
+                input = allZerosFourBytes.addAll(input);
+            }
+            var longEquivalent = BytePacking.BPLong.byteArrayToLong(input);
             
             // if leading bit is '1' then it is a negative number. We shift to make this comparison
-            var isNegative = (longEquivalent >> (SHIFT_DUE_TO_FLOAT - 1)) == 1l;
+            var isNegative = false;
+            if(PARSING_SHIFT!=32){
+                // its a double
+                isNegative = ( longEquivalent & longWithFirstNBitsOne(1) )  == (1l <<  (BITS_IN_DOUBLE - 1));
+            }
+            else{
+                isNegative = (longEquivalent >> (PARSING_SHIFT - 1)) == 1l;
+            }
             // now remove the sign bit
-            longEquivalent = longEquivalent & longWithFirstNBitsZero( SHIFT_DUE_TO_FLOAT + BITS_IN_SIGN );
+            longEquivalent = longEquivalent & longWithFirstNBitsZero( PARSING_SHIFT + BITS_IN_SIGN );
 
             // As sign bit is removed, we remove the tail mantissa portion to get the middle exponent value portion
-            var exponentValue = ( (longEquivalent >> BITS_IN_FLOAT_MANTISSA) - FLOAT_EXPONENT_BIAS ).toNumber();
+            var exponentValue = ( (longEquivalent >> BITS_IN_MANTISSA) - EXPONENT_BIAS ).toNumber();
 
-            if(exponentValue + FLOAT_EXPONENT_BIAS == FLOAT_ALL_ONES_EXPONENT){
+            if(exponentValue + EXPONENT_BIAS == ALL_ONES_EXPONENT){
                 throw new Toybox.Lang.InvalidValueException("Exponent all 1's - we don't deal with nans/infs");
             }
 
             //TODO: generalize for double and float
 
             // we isolate the mantissa from all the other bits
-            var mantissaLong = ( longEquivalent ) & longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA) ;
+            var mantissaLong = ( longEquivalent ) & longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_MANTISSA) ;
 
             // Here we are adding the leading one bit, that is assumed to the left of the mantissa
-            var mantissaLeadingOne = 1l << BITS_IN_FLOAT_MANTISSA;
+            var mantissaLeadingOne = 1l << BITS_IN_MANTISSA;
             mantissaLong = mantissaLong | mantissaLeadingOne;
 
             if(exponentValue >= 0){
@@ -279,7 +305,7 @@ module BytePacking{
                 var integerPortionMantissaLong = mantissaLong;
                 var doublePortionMantissaLong = 0l;
 
-                if(exponentValue < BITS_IN_FLOAT_MANTISSA){
+                if(exponentValue < BITS_IN_MANTISSA){
                     /*
                         The exponent value is small enough that not all the mantissa bits are used
                         for the integer portion which is why we now compute the decimal portion
@@ -287,11 +313,11 @@ module BytePacking{
                     */
 
                     // make sure integer portion bits only contain integer portion bits
-                    integerPortionMantissaLong = mantissaLong >> (BITS_IN_FLOAT_MANTISSA - exponentValue);
+                    integerPortionMantissaLong = mantissaLong >> (BITS_IN_MANTISSA - exponentValue);
 
                     //  the rest of the bits are for computing the decimal
-                    doublePortionMantissaLong = mantissaLong & longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA+exponentValue);
-                    var newDecimalData = DecimalData.newDecimalData(doublePortionMantissaLong,BITS_IN_FLOAT_MANTISSA-exponentValue );
+                    doublePortionMantissaLong = mantissaLong & longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_MANTISSA+exponentValue);
+                    var newDecimalData = DecimalData.newDecimalData(doublePortionMantissaLong,BITS_IN_MANTISSA-exponentValue );
                     output = output + newDecimalData.getDecimalOfBits();
                 }
 
@@ -300,15 +326,15 @@ module BytePacking{
                 
             }
             else{ // it's all just decimal.
-                if(exponentValue > MINIMAL_FLOAT_EXPONENT){
-                    var newDecimalData = DecimalData.newDecimalData(mantissaLong,(exponentValue).abs() + BITS_IN_FLOAT_MANTISSA );
+                if(exponentValue > MINIMAL_EXPONENT){
+                    var newDecimalData = DecimalData.newDecimalData(mantissaLong,(exponentValue).abs() + BITS_IN_MANTISSA );
                     output = output + newDecimalData.getDecimalOfBits();
                 }
                 else{
                     // subnormal case where the leading one must be replaced with a leading zero
-                    var mantissaLeadingZero = longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA) & mantissaLong;
+                    var mantissaLeadingZero = longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_MANTISSA) & mantissaLong;
                     
-                    var newDecimalData = DecimalData.newDecimalData(mantissaLeadingZero,(exponentValue).abs() + BITS_IN_FLOAT_MANTISSA - BytePacking.LEADING_ONE_OUTSIDE_MANTISSA_BIT);
+                    var newDecimalData = DecimalData.newDecimalData(mantissaLeadingZero,(exponentValue).abs() + BITS_IN_MANTISSA - BytePacking.LEADING_ONE_OUTSIDE_MANTISSA_BIT);
                     output = output + newDecimalData.getDecimalOfBits();
                 }
             }            
@@ -317,7 +343,7 @@ module BytePacking{
             if(isNegative){
                 output = output * -1;
             }
-            return output.toFloat();
+            return output.toDouble();
         }
     }
 }
