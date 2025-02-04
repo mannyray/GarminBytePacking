@@ -102,4 +102,28 @@ module BytePacking{
             return output;
         }
     }
+
+
+    class BPLongPacked {
+        private var bitOccupation as Toybox.Lang.Number = 0;
+        private var data as Toybox.Lang.Long = 0l;
+
+        function initialize(){}
+
+        function addData(bdp as BytePacking.BinaryDataPair) as Void{
+            if(bitOccupation + bdp.bitCount > BytePacking.BITS_IN_LONG){
+                throw new Toybox.Lang.InvalidValueException("We are already storing too much");
+            }
+            data = data | (bdp.long << (BytePacking.BITS_IN_LONG - bitOccupation - bdp.bitCount)  );
+            bitOccupation+=bdp.bitCount;
+        }
+
+        function getCurrentBitOccuputation() as Toybox.Lang.Number{
+            return bitOccupation;
+        }
+
+        function getData() as Toybox.Lang.Long{
+            return data;
+        }
+    }
 }

@@ -18,9 +18,39 @@ module BytePackingTesting{
     }
 
     (:test)
+    function UtilTest_basic_binaryDataPairWithMaxBits_Test(logger as Toybox.Test.Logger) as Boolean {
+        var number = 1234l; // 11 digits in binary: 10011010010
+        var bdp = BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(number,11);
+        Test.assertEqual(number,bdp.long);
+        Test.assertEqual(11,bdp.bitCount);
+
+        bdp = BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(number,12);
+        Test.assertEqual(number,bdp.long);
+        Test.assertEqual(12,bdp.bitCount);
+
+        try {
+            bdp = BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(number,10);
+            Test.assert(1 == 0);//should never be reached.
+        } catch (e instanceof Toybox.Lang.InvalidValueException) {
+            var acquiredErrorMessage = e.getErrorMessage();
+            var expectedErrorMessage = "maxBitCount is less than actual bit count.";
+            Test.assertMessage(
+                acquiredErrorMessage.find(expectedErrorMessage) != null,
+                "Invalid error message. Got '" +
+                acquiredErrorMessage +
+                "', expected: '" +
+                expectedErrorMessage +
+                "'"
+            );
+        }
+        return true;
+    }
+
+    (:test)
     function UtilTest_invalidInput_BinaryDataPair_Test(logger as Toybox.Test.Logger) as Boolean {
         try {
             new BytePacking.BinaryDataPair(100);
+            Test.assert(1 == 0);//should never be reached.
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting Toybox.Lang.Long argument type";
@@ -36,6 +66,7 @@ module BytePackingTesting{
 
         try {
             new BytePacking.BinaryDataPair(-100l);
+            Test.assert(1 == 0);//should never be reached.
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting a non negative long";
@@ -233,6 +264,7 @@ module BytePackingTesting{
         var randomDepth = 10;
         try {
             BytePacking.DecimalData.getBitsOfDecimal(0.123f,{:maximumBits => randomDepth} );//supposed to be a double and a float
+            Test.assert(1 == 0);//should never be reached.
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting Toybox.Lang.Double argument type as first argument";
@@ -248,6 +280,7 @@ module BytePackingTesting{
 
         try {
             BytePacking.DecimalData.getBitsOfDecimal(1d,{:maximumBits => randomDepth} );
+            Test.assert(1 == 0);//should never be reached.
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1) as first argument";
@@ -263,6 +296,7 @@ module BytePackingTesting{
 
         try {
             BytePacking.DecimalData.getBitsOfDecimal(-0.123d,{:maximumBits => randomDepth} );
+            Test.assert(1 == 0);//should never be reached.
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting a Toybox.Lang.Double in the range of (0,1) as first argument";
@@ -304,6 +338,7 @@ module BytePackingTesting{
         for(var i=0; i<invalidDictionaries.size(); i++ ){
             try {
                 BytePacking.DecimalData.getBitsOfDecimal(0.123d,invalidDictionaries[i] );
+                Test.assert(1 == 0);//should never be reached.
             } catch (e instanceof Toybox.Lang.Exception) {
                 var acquiredErrorMessage = e.getErrorMessage();
                 var expectedErrorMessage = expectedErrorMessages[i];
@@ -489,6 +524,7 @@ module BytePackingTesting{
         for(var i=0; i<wrongInputs.size();i++){
             try {
                 BytePacking.FloorData.getBitsOfFloor(wrongInputs[i]);//supposed to be a double and a float
+                Test.assert(1 == 0);//should never be reached.
             } catch (e instanceof Toybox.Lang.Exception) {
                 var acquiredErrorMessage = e.getErrorMessage();
                 var expectedErrorMessage = expectedErrors[i];

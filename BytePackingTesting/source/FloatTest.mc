@@ -26,7 +26,7 @@ module BytePackingTesting{
     function FloatTest_smokeTest(logger as Toybox.Test.Logger) as Boolean {
         Math.srand(0);
         var counter = 0;
-        var max = 10000;
+        var max = 100;
         var startTime = System.getTimer();
         var currentPercentageStartTime = startTime;
         var nextPercentage = 0.1;
@@ -61,6 +61,7 @@ module BytePackingTesting{
         try {
             var arr = [0x7f,0xaf,0x34,0x67]b;// 0 11111111 01011110011010001100111
             BytePacking.BPFloat.byteArrayToFloat(arr);
+            Test.assert(1 == 0);//should never be reached.
         } catch (e instanceof Toybox.Lang.Exception) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Exponent all 1's - we don't deal with nans/infs";

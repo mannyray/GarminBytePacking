@@ -47,6 +47,23 @@ module BytePacking{
                 bitCount++;
             }
         }
+
+        /*
+            The regular constructor of BinaryDataPair computes the exact amount of bits required to store the bit and stores it as
+            bitCount. We add a maxBitCount option that sets the bitCount to this value in case where bitCount < maxBitCount
+            This is useful in situations where you want padding.
+            (e.g. for long number 3 you need 2 bits ("11" in binary), but can choose maxBitCount to 4 so that we are treating it as "0011")
+        */
+        static function binaryDataPairWithMaxBits(input as Toybox.Lang.Long, maxBitCount as Toybox.Lang.Number) as BinaryDataPair{
+            var output = new BinaryDataPair(input);
+            if(output.bitCount<=maxBitCount){
+                output.bitCount = maxBitCount;
+            }
+            else{
+                throw new Toybox.Lang.InvalidValueException("maxBitCount is less than actual bit count.");
+            }
+            return output;
+        }
     }
 
     /*

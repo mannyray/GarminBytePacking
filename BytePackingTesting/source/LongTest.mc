@@ -13,7 +13,7 @@ module BytePackingTesting{
     
 
     (:test)
-    function basicTest(logger as Toybox.Test.Logger) as Boolean {
+    function Long_basicTest(logger as Toybox.Test.Logger) as Boolean {
         var longNumber = 100l;
         /*
             in binary notation this is 1100100
@@ -47,7 +47,7 @@ module BytePackingTesting{
     }
 
     (:test)
-    function zeroTest(logger as Toybox.Test.Logger) as Boolean {
+    function Long_zeroTest(logger as Toybox.Test.Logger) as Boolean {
         var zero = 0l;
         var zeroExpectedByteArray = [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]b;
         var zeroComputedByteArray = BytePacking.BPLong.longToByteArray(zero);
@@ -59,7 +59,7 @@ module BytePackingTesting{
     }
 
     (:test)
-    function bigAbsoluteValueNumberTest(logger as Toybox.Test.Logger) as Boolean {
+    function Long_bigAbsoluteValueNumberTest(logger as Toybox.Test.Logger) as Boolean {
         var biggestNumber = 9223372036854775807l;
         var biggestNumberExpectedByteArray = [0x7f,0xff,0xff,0xff,0xff,0xff,0xff,0xff]b;
         var biggestNumberComputedByteArray = BytePacking.BPLong.longToByteArray(biggestNumber);
@@ -78,7 +78,7 @@ module BytePackingTesting{
     }
 
     (:test)
-    function randomNumberTest(logger as Toybox.Test.Logger) as Boolean {
+    function Long_randomNumberTest(logger as Toybox.Test.Logger) as Boolean {
         var randomNumber = 2341698761234l;
         var randomNumberExpectedArray = [0x00,0x00,0x02,0x21,0x38,0x1F,0x72,0x12];
         var randomNumberComputedArray = BytePacking.BPLong.longToByteArray(randomNumber);
@@ -96,10 +96,11 @@ module BytePackingTesting{
     }
 
     (:test)
-    function errorTest(logger as Toybox.Test.Logger) as Boolean {
+    function Long_errorTest(logger as Toybox.Test.Logger) as Boolean {
         var randomButTooShortInputArray = [0xFF,0xFF,0xFD, 0xDE, 0xC7, 0xE0, 0x8D]b;
         try {
             BytePacking.BPLong.byteArrayToLong(randomButTooShortInputArray);
+            Test.assert(1 == 0);//should never be reached.
         } catch (e instanceof Toybox.Lang.InvalidValueException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Byte array should be of size 8 and not: 7";
@@ -116,10 +117,11 @@ module BytePackingTesting{
     }
 
     (:test)
-    function wrongInputTypeTest(logger as Toybox.Test.Logger) as Boolean {
+    function Long_wrongInputTypeTest(logger as Toybox.Test.Logger) as Boolean {
         try {
             var notALongNumber = 100.09;
             BytePacking.BPLong.longToByteArray(notALongNumber);
+            Test.assert(1 == 0);//should never be reached.
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting Toybox.Lang.Long argument type";
@@ -136,6 +138,7 @@ module BytePackingTesting{
        try {
             var notALongNumber = 100;//a "Number" type
             BytePacking.BPLong.longToByteArray(notALongNumber);
+            Test.assert(1 == 0);//should never be reached.
         } catch (e instanceof Toybox.Lang.UnexpectedTypeException) {
             var acquiredErrorMessage = e.getErrorMessage();
             var expectedErrorMessage = "Expecting Toybox.Lang.Long argument type";
@@ -152,7 +155,7 @@ module BytePackingTesting{
     }
 
     (:test)
-    function chainingMethods(logger as Toybox.Test.Logger) as Boolean {
+    function Long_chainingMethods(logger as Toybox.Test.Logger) as Boolean {
         /*
         Since this class tested extends Toybox.Lang.Long then want to do a basic
         test if we can chain on Long methods to BytePacking.Long methods. Not a controversial test
@@ -174,6 +177,97 @@ module BytePackingTesting{
         */
         Test.assert(200l == testVar + 100l);
         
+        return true;
+    }
+
+
+    (:test)
+    function Long_BPLongPacked_test(logger as Toybox.Test.Logger) as Boolean {
+        
+        /*
+            We have a few numbers we want to pack into a single long
+        */
+        var numbers = [
+            523l, // 1000001011 - 10 digits
+            8129l, // 1111111000001 - 13 digits
+            654321l, // 10011111101111110001 - 20 digits
+            9237l // 10010000010101 -  14 digits
+            ];
+        var bitsRequired = [10, 13, 20, 14, 8];
+        /*
+            pad one of the entries with zeros
+
+            this is useful in scenarios where you have a varying data point within some range of
+            say [0,255] (8 bit max range), but at times enter in data that doesn't require
+            all the bits (say your data is 16 which is 5 binary digits), but for consistency and
+            later on processing sake you want to make sure you always use the 8 bits which
+            is why you would pad.
+        */
+
+        bitsRequired[2]+= 1;
+        // we now have 58 bits
+
+        // Let's starting packing the data into the long:
+        var packed = new BytePacking.BPLongPacked();
+        for(var i=0; i<numbers.size(); i++){
+            packed.addData(BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(numbers[i],bitsRequired[i]));
+        }
+
+        Test.assert(packed.getCurrentBitOccuputation()==58);
+
+        /*
+            Our number is
+            1000001011 1111111000001 0 10011111101111110001 10010000010101 (that's the 58 up to now and the rest zeros) 000000
+            or compacted 1000001011111111100000101001111110111111000110010000010101000000 which according to
+            https://www.rapidtables.com/convert/number/binary-to-decimal.html
+            is equivalent to -9007337107100203712
+
+            Out of 64 bits in long, 6 bits are maining as first 58 are used
+            
+        */
+        Test.assert(packed.getData() == -9007337107100203712l);
+        
+        // we now try to pack something that does not fit into the remaining 6 bits ( 64 == 7 bits) and fail
+        try {
+            packed.addData(new BytePacking.BinaryDataPair(64l));
+            Test.assert(1 == 0);//should never be reached.
+        } catch (e instanceof Toybox.Lang.InvalidValueException) {
+            var acquiredErrorMessage = e.getErrorMessage();
+            var expectedErrorMessage = "We are already storing too much";
+            Test.assertMessage(
+                acquiredErrorMessage.find(expectedErrorMessage) != null,
+                "Invalid error message. Got '" +
+                acquiredErrorMessage +
+                "', expected: '" +
+                expectedErrorMessage +
+                "'"
+            );
+        }
+
+        //However 32 fits as it is 6 bits
+        packed.addData(new BytePacking.BinaryDataPair(32l));
+
+        /*
+            Our new long in bits is 
+            1000001011111111100000101001111110111111000110010000010101100000
+        */
+        Test.assert(packed.getData() == -9007337107100203680l);
+        Test.assert(packed.getCurrentBitOccuputation()==64);// no more bits left over
+
+        /*
+            we now extract the byte array of the stored long
+            and verify that it is equal to what is expected
+        */
+        var byteArray = BytePacking.BPLong.longToByteArray(packed.getData());
+        assertEquivalencyBetweenByteArrays(byteArray, [0x82,0xFF,0x82,0x9F,0xBF,0x19,0x05,0x60]b);
+
+        /*
+            Now that we have the byte array of a long which is 64 bits, we can express it as 
+            a double which is also 64 bits long
+        */
+        Test.assert(BytePacking.BPDouble.byteArrayToDouble(byteArray)==-3.0835862373866053e-294d);
+
+
         return true;
     }
 
