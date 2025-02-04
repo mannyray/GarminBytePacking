@@ -56,7 +56,7 @@ module BytePackingTesting{
         return true;
     }
 
-     (:test)
+    (:test)
     function FloatTest_nanCheck(logger as Toybox.Test.Logger) as Boolean {
         try {
             var arr = [0x7f,0xaf,0x34,0x67]b;// 0 11111111 01011110011010001100111
@@ -73,6 +73,6 @@ module BytePackingTesting{
                 "'"
             );
         }
-}
-
+        return true;
+    }
 }

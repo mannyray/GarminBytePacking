@@ -71,6 +71,16 @@ module BytePackingTesting{
         }
     }
 
+    function assertEquivalencyBetweenByteArraysDouble(arr1 as Toybox.Lang.ByteArray,arr2 as Toybox.Lang.ByteArray){
+        Test.assertEqual(arr1.size(),arr2.size());
+        for(var i=0; i<arr1.size(); i++){
+            Test.assertEqualMessage(arr1[i],arr2[i],
+            "\n"+byteArrayToHexArrayString(arr1) + "\nversus \n" + byteArrayToHexArrayString(arr2) + 
+            "\nor\n"+byteArrayToBinaryString(arr1,[1,12]) + "\nversus \n" + byteArrayToBinaryString(arr2,[1,12]) 
+            );
+        }
+    }
+
     function assertEquivalencyBetweenByteArrays(arr1 as Toybox.Lang.ByteArray,arr2 as Toybox.Lang.ByteArray){
         Test.assertEqual(arr1.size(),arr2.size());
         for(var i=0; i<arr1.size(); i++){

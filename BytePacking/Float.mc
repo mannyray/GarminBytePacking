@@ -20,8 +20,17 @@ module BytePacking{
         /*
             Converts a float to ENDIAN_BIG style format.
             See https://www.h-schmidt.net/FloatConverter/IEEE754.html for example.
+            
         */
         static function floatToByteArray(input as Toybox.Lang.Float) as Toybox.Lang.ByteArray {
+            if(!(input instanceof Toybox.Lang.Float) ){
+                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Float argument type",null,null);
+            }
+
+            if( input.toDouble() == 0d){
+                // special separate case, because the exponent is set to zero
+                return [0x00,0x00,0x00,0x00]b;
+            }
 
             var BITS_IN_MANTISSA = BytePacking.BITS_IN_FLOAT_MANTISSA;
             var MINIMAL_EXPONENT = BytePacking.MINIMAL_FLOAT_EXPONENT;
@@ -29,15 +38,20 @@ module BytePacking{
             var BITS_IN_EXPONENT = BytePacking.BITS_IN_FLOAT_EXPONENT;
             var PARSING_SHIFT = BytePacking.SHIFT_DUE_TO_FLOAT;
 
-            if(!(input instanceof Toybox.Lang.Float) ){
-                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Float argument type",null,null);
-            }
+            return genericToByteArray(input.toDouble(),BITS_IN_MANTISSA,MINIMAL_EXPONENT,EXPONENT_BIAS,BITS_IN_EXPONENT,PARSING_SHIFT);
+            
+        }
+
+        static function genericToByteArray(input as Toybox.Lang.Double,
+            BITS_IN_MANTISSA as Toybox.Lang.Number,
+            MINIMAL_EXPONENT as Toybox.Lang.Number,
+            EXPONENT_BIAS as Toybox.Lang.Number,
+            BITS_IN_EXPONENT as Toybox.Lang.Number,
+            PARSING_SHIFT as Toybox.Lang.Number
+        ) as Toybox.Lang.ByteArray {
+           
             if(isnan(input) or isinf(input)){
                 throw new Toybox.Lang.InvalidValueException("Input cannot be inf or nan");
-            }
-            if( input.toDouble() == 0){
-                // special separate case, because the exponent is set to zero
-                return [0x00,0x00,0x00,0x00]b;
             }
 
             var longEquivalentInBitsOfInput = 0l;
@@ -200,12 +214,17 @@ module BytePacking{
                 // The leading bit in IEEE 754 is for the sign. If negative, we turn this bit ON.
                 longEquivalentInBitsOfInput = longEquivalentInBitsOfInput | longWithFirstNBitsOne(PARSING_SHIFT + BytePacking.BITS_IN_SIGN);
             }
-            /*
-                We were doing our bit manipulation usings long due to ease of running bit shifting and logical OR operations
-                However, long is 64 bits while float is 32 in our long the float portion is stored in the second half
-                which is why we return the slice (i.e. second half of the byte array)
-            */
-            return BytePacking.BPLong.longToByteArray(longEquivalentInBitsOfInput).slice(BytePacking.BYTES_IN_FLOAT,null);
+            
+            if(PARSING_SHIFT == BytePacking.SHIFT_DUE_TO_FLOAT){
+                /*
+                    We were doing our bit manipulation usings long due to ease of running bit shifting and logical OR operations
+                    However, long is 64 bits while float is 32 in our long the float portion is stored in the second half
+                    which is why we return the slice (i.e. second half of the byte array)
+                */
+                return BytePacking.BPLong.longToByteArray(longEquivalentInBitsOfInput).slice(BytePacking.BYTES_IN_FLOAT,null);
+            }
+            // for the double case
+            return BytePacking.BPLong.longToByteArray(longEquivalentInBitsOfInput);
         }
 
 
