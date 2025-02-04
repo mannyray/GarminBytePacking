@@ -18,21 +18,15 @@ module BytePacking{
         expectedArray.encodeNumber(float,Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG});
         assertEquivalencyBetweenByteArraysFloat(expectedArray,computedArray);
 
-
         Test.assertEqual(float,decoded);
-        //expectedArray.encodeNumber(float,Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG});
-        //assertEquivalencyBetweenByteArrays(expectedArray,computedArray);
-
-        //var computedFloat = BytePacking.Float.byteArrayToFloat(computedArray);
-        //Test.assertEqualMessage(input, computedFloat, "Expected " + input + ", but got " +computedFloat);
-        //Exception: ASSERTION FAILED: [0x4b,0x80,0x0,0x4e,] versus [0x4b,0x80,0x0,0x0,]
+        Test.assertEqual(float,BytePacking.Float.byteArrayToFloat(computedArray));
     }
 
     (:test)
     function FloatTest_smokeTest(logger as Toybox.Test.Logger) as Boolean {
         Math.srand(0);
         var counter = 0;
-        var max = 100;
+        var max = 10000;
         var startTime = System.getTimer();
         var currentPercentageStartTime = startTime;
         var nextPercentage = 0.1;
@@ -59,20 +53,6 @@ module BytePacking{
             testTwoWayASingleFloat(number);
         }
         System.println("Overall, took " + (System.getTimer()-startTime).toDouble()/1000d +" seconds." );
-        return true;
-    }
-
-
-    (:test)
-    function FloatTest_byteArrayToFloat(logger as Toybox.Test.Logger) as Boolean {
-        //var floatsOfInterest = [1f,0f,123f];
-        var floatsOfInterest = [12328934765908234f,28032752384f];
-        for(var i=0; i<floatsOfInterest.size(); i++){
-            var computedArray = BytePacking.Float.floatToByteArray(floatsOfInterest[i]);
-            var computedFloat = BytePacking.Float.byteArrayToFloat(computedArray);
-            System.println("GG"+computedFloat);
-            Test.assertMessage(computedFloat == floatsOfInterest[i],""+computedFloat);
-        }
         return true;
     }
 }

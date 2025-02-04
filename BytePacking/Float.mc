@@ -181,7 +181,7 @@ module BytePacking{
                     }
                     else{
                         // subnormal number
-                        //example: 0 00000000 10101001100100100100010 = 7.786335e-39
+                        //example: 0 00000000 10101001100100100100010 = x
                         //Mantissa is not zero and exponent part is, and the leading bit is assumed to be 0 instead of the usual 1
                         shift = (BITS_IN_MANTISSA - decimalData.getBitCountAfterLeadingZeros() - (exponentValue+EXPONENT_BIAS).abs());
                         exponentValue = MINIMAL_EXPONENT;
@@ -214,7 +214,6 @@ module BytePacking{
         }
 
 
-
         function byteArrayToFloat(input as Toybox.Lang.ByteArray) as Toybox.Lang.Float {
             // TODO: input validation
 
@@ -233,41 +232,42 @@ module BytePacking{
             var isNegative = (longEquivalent >> (SHIFT_DUE_TO_FLOAT - 1)) == 1l;
             // now remove the sign bit
             longEquivalent = longEquivalent & longWithFirstNBitsZero( SHIFT_DUE_TO_FLOAT + 1);
-            var exponentValue = (longEquivalent >> BITS_IN_FLOAT_MANTISSA) - FLOAT_EXPONENT_BIAS;
+            var exponentValue = ( (longEquivalent >> BITS_IN_FLOAT_MANTISSA) - FLOAT_EXPONENT_BIAS ).toNumber();
 
-            var mantissaLong = ( longEquivalent ) & longWithFirstNBitsZero(64-23) ;
+            var mantissaLong = ( longEquivalent ) & longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA) ;
             var mantissaLeadingOne = 1l << BITS_IN_FLOAT_MANTISSA;
             mantissaLong = mantissaLong | mantissaLeadingOne;
-            System.println("a " + exponentValue);
             if(exponentValue >= 0){
-                System.println("herehere");
-                if(exponentValue >= BITS_IN_FLOAT_MANTISSA){
-                    // purely an integer
-
-                    System.println(mantissaLong);
-                    var newFloorData = FloorData.newFloorData(mantissaLong,exponentValue+1);
-
-                    output = newFloorData.getFloorOfBits();
+                var integerPortionMantissaLong = mantissaLong;
+                var doublePortionMantissaLong = 0l;
+                if(exponentValue < BITS_IN_FLOAT_MANTISSA){
+                    integerPortionMantissaLong = mantissaLong >> (BITS_IN_FLOAT_MANTISSA - exponentValue);
+                    doublePortionMantissaLong = mantissaLong & longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA+exponentValue);
+                    var newDecimalData = DecimalData.newDecimalData(doublePortionMantissaLong,BITS_IN_FLOAT_MANTISSA-exponentValue );
+                    output = output + newDecimalData.getDecimalOfBits();
                 }
+
+                var newFloorData = FloorData.newFloorData(integerPortionMantissaLong,exponentValue+1);
+                output = output +  newFloorData.getFloorOfBits();
+                
             }
-            System.println("done");
-
-            // if exponent value > 0 then we have integer portion
-            /*
-            exponent value will tell us by how much we have to shift the mantissa long portion to the right where we also append a leading one
-            if exponent value < a certain number then we have decimal portion as well 
-            */
-
-            // else it is all just decimal
-            /*
-            ... subnormal handle if exponent equals minimal we assume leading 0, otherwise we assuming leading one
-            */
+            else{ // it's all just decimal.
+                if(exponentValue > MINIMAL_FLOAT_EXPONENT){
+                    var newDecimalData = DecimalData.newDecimalData(mantissaLong,(exponentValue).abs() + BITS_IN_FLOAT_MANTISSA );
+                    output = output + newDecimalData.getDecimalOfBits();
+                }
+                else{
+                    var mantissaLeadingZero = longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA) & mantissaLong;
+                    var newDecimalData = DecimalData.newDecimalData(mantissaLeadingZero,(exponentValue).abs() + BITS_IN_FLOAT_MANTISSA - 1);
+                    output = output + newDecimalData.getDecimalOfBits();
+                }
+            }            
 
             //TODO test inf/nan
             if(isNegative){
                 output = output * -1;
             }
-            return output;
+            return output.toFloat();
         }
     }
 }

@@ -255,10 +255,49 @@ module BytePacking{
         private var long as Toybox.Lang.Long;
         private var totalBitCount as Toybox.Lang.Number;
         private var bitCountAfterLeadingZeros as Toybox.Lang.Number;
-        function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){
+        private function initialize(l as Toybox.Lang.Long, lbc as Toybox.Lang.Number, bcafo as Toybox.Lang.Number){
             long = l;
             totalBitCount = lbc;
             bitCountAfterLeadingZeros = bcafo;
+        }
+
+        function newDecimalData(longInput as Toybox.Lang.Long, bitCountMax as Toybox.Lang.Number) as DecimalData{
+            /*
+                Create a DecimalData object from unclean input in the case.
+
+                For example: 
+                Input is 0001000 or longInput=8 with bitCountMax set to 7
+                The trailing three 0s are unecessary so the the following output should be
+                long=1,totalBitCount=4,bitCountAfterLeadingZeros=1 
+            */
+            if(!(longInput instanceof Toybox.Lang.Long) ){
+                /*
+                    Necessary, to avoid unexpected behaviour if user supplies a Number for example.
+                */
+                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Long argument type as first argument",null,null);
+            }//TODO positive long
+
+            if(longInput == 0){
+                return new DecimalData(0,0,0);
+            }
+
+            var onlyRightmostBitOne = 1l;
+            var firstBit = longInput & onlyRightmostBitOne;
+            var trailingZeroCount = 0;
+            while(firstBit!=1l){
+                longInput = longInput >> 1;
+                firstBit = longInput & onlyRightmostBitOne;
+                trailingZeroCount++;
+            }
+
+            var totalBitCount = bitCountMax - trailingZeroCount;
+            
+            var bdp = new BinaryDataPair(longInput);
+            if(totalBitCount - bdp.bitCount < 0){
+                throw new Toybox.Lang.InvalidValueException("bitCountMax illogical");
+            }
+
+            return new DecimalData(longInput, totalBitCount, bdp.bitCount);
         }
 
         function getLongEquivalent() as Toybox.Lang.Long{
