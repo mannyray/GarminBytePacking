@@ -199,7 +199,7 @@ module BytePacking{
                 Output: FloorData(_long=9('1001'), _totalBitCount=10, _bitCountBeforeAllZeros=4)
             */
 
-            if(!(long instanceof Toybox.Lang.Long) ){//TODO: test
+            if(!(long instanceof Toybox.Lang.Long) ){
                 /*
                     Necessary, to avoid unexpected behaviour if user supplies a Number for example.
                 */
@@ -209,26 +209,32 @@ module BytePacking{
                 throw new Toybox.Lang.InvalidValueException("Expected positive integer Toybox.Lang.Long as first argument");
             }
 
+            // we keep shifting our long to the right until we have removed all the trailing zeros (e.g. fro 100100 -> 1001)
             var onlyRightmostBitOne = 1l;
             var firstBit = long & onlyRightmostBitOne;
             while(firstBit!=1l){
                 long = long >> 1;
                 firstBit = long & onlyRightmostBitOne;
             }
+
             // now we have removed the trailing zeros so time to determine bit count of this new long
             var bdp = new BinaryDataPair(long); 
             if (totalBitCount < bdp.bitCount){
                 throw new Toybox.Lang.InvalidValueException("totalBitCount illogical");
             }
+            // totalBitCount remains the same as we assume the caller provided the right value
             return new FloorData(long, totalBitCount, bdp.bitCount);
         }
 
         /*
-            TODO: describe
+            This function does the reverse of getBitsOfFloor
         */
         function getFloorOfBits() as Toybox.Lang.Double{
             /*
-                We assume that newFloorData has cleaned up trailing zero concern. We test for this.
+                We assume that newFloorData has cleaned up trailing zeros. We test for this.
+                If it has not then it is not true to FloorData's defitions of
+                _long, _totalBitCount, _bitCountBeforeAllZeros and so our algorithm below might
+                be broken
             */
             var testFloorData = newFloorData(_long,_totalBitCount);
             if(_long!= testFloorData.getLongEquivalent() or _bitCountBeforeAllZeros != testFloorData.getBitCountBeforeTrailingZeros() ){
@@ -239,11 +245,25 @@ module BytePacking{
             var multipyingFactor = 1d;
             var onlyRightmostBitOne = 1l;
             var longCopy = _long;
+
+            /*
+                Starting with the right most binary digits of the long
+                we add them to our output sum of the individual digits
+                that are multiplied by multipyingFactor. multipyingFactor
+                grows from 1 by a power of 2 each time because as we go from right
+                most to left most binary digits the order grows by 2 each digit
+            */
             for(var i=0; i<_bitCountBeforeAllZeros; i++){
-                output = output + (longCopy&onlyRightmostBitOne).toDouble() * multipyingFactor;
-                longCopy = longCopy >> 1;
+                output = output + (longCopy&onlyRightmostBitOne).toDouble() * multipyingFactor;//(longCopy&onlyRightmostBitOne).toDouble() extracts the right most digit (1 or 0)
+                longCopy = longCopy >> 1;//remove the right most digit, for the next one to be processed
                 multipyingFactor *= 2d;
             }
+
+            /*
+                For the trailing zeros binary bits its equivalent to just multipying by two a bunch of times
+
+                e.g. Difference between 100100 (36) and 1001 (9) is the two trailing zeros of the former account for *2^2 effect
+            */
             for(var i=0; i< getTrailingZeroCount(); i++){
                 output = output * 2d;
             }
@@ -263,24 +283,32 @@ module BytePacking{
 
         static function newDecimalData(longInput as Toybox.Lang.Long, bitCountMax as Toybox.Lang.Number) as DecimalData{
             /*
-                Create a DecimalData object from unclean input in the case.
+                Create a DecimalData object from unclean input.
 
                 For example: 
-                Input is 0001000 or longInput=8 with bitCountMax set to 7
+                Input is .0001000 or longInput=8 with bitCountMax set to 7
                 The trailing three 0s are unecessary so the the following output should be
                 long=1,totalBitCount=4,bitCountAfterLeadingZeros=1 
             */
-            if(!(longInput instanceof Toybox.Lang.Long) ){//TODO: test
+            if(!(longInput instanceof Toybox.Lang.Long) ){
                 /*
                     Necessary, to avoid unexpected behaviour if user supplies a Number for example.
                 */
                 throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.Long argument type as first argument",null,null);
-            }//TODO positive long
+            }
+            if(longInput < 0){
+                throw new Toybox.Lang.InvalidValueException("Expecting a positive long input as first argument");
+            }
 
             if(longInput == 0){
                 return new DecimalData(0l,0,0);
             }
 
+            /*
+                we adjust the input longInput to remove the trailing zeros because in a binary decimal
+                "0.0010", the last "0" doesn't effect the actual value. In addition, we adjust the totalBitCount
+                to remove these from the count
+            */
             var onlyRightmostBitOne = 1l;
             var firstBit = longInput & onlyRightmostBitOne;
             var trailingZeroCount = 0;
@@ -289,11 +317,20 @@ module BytePacking{
                 firstBit = longInput & onlyRightmostBitOne;
                 trailingZeroCount++;
             }
-
             var totalBitCount = bitCountMax - trailingZeroCount;
             
+            /*
+                We compute bitCountAfterLeadingZeros (in the case of "0.001" it 1 for the "1")
+            */
             var bdp = new BinaryDataPair(longInput);
             if(totalBitCount - bdp.bitCount < 0){
+                /*
+                    A basic sanity check. However, we can't catch all cases here
+                    as totalBitCount is supposed to include the leading zeros but
+                    that all depends on if the caller specifies that leading count correctly 
+                    as part of totalBitCount as the code here has not way of determining if it is
+                    actually correct (since the leading 0s are implicit).
+                */
                 throw new Toybox.Lang.InvalidValueException("bitCountMax illogical");
             }
 

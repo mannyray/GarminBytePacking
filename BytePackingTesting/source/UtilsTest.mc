@@ -515,4 +515,34 @@ module BytePackingTesting{
         Test.assert(BytePacking.isinf(infArr.decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {:offset => 0, :endianness=>Lang.ENDIAN_BIG})));
         return true;
     }
+
+    (:test)
+    function UtilTest_newDecimalData_Test(logger as Toybox.Test.Logger) as Boolean {
+         var testDicts = [
+            {
+                :longInput=>1l,
+                :totalBitCountInput=>1,
+                :expectedLongEquivalent=>1l,
+                :getBitCountAfterLeadingZeros=>1,
+            },
+            {
+                :longInput=>1l,
+                :totalBitCountInput=>2,
+                :expectedLongEquivalent=>1l,
+                :getBitCountAfterLeadingZeros=>1,
+            },
+            {
+                :longInput=>2l,
+                :totalBitCountInput=>2,
+                :expectedLongEquivalent=>1,
+                :getBitCountAfterLeadingZeros=>1,
+            },
+        ];
+        for(var i=0; i<testDicts.size();i++){
+            var output = BytePacking.DecimalData.newDecimalData(testDicts[i][:longInput],testDicts[i][:totalBitCountInput]);
+            Test.assert(output.getLongEquivalent()==testDicts[i][:expectedLongEquivalent]);
+            Test.assert(output.getBitCountAfterLeadingZeros()==testDicts[i][:getBitCountAfterLeadingZeros] );
+        }
+        return true;
+    }
 }

@@ -17,4 +17,5 @@ module BytePacking{
 
     const LEADING_ONE_OUTSIDE_MANTISSA_BIT = 1;
     const BITS_IN_SIGN = 1;
+    const FLOAT_ALL_ONES_EXPONENT = 255;
 }

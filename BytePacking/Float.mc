@@ -13,7 +13,6 @@ module BytePacking{
 
     class BPFloat extends Toybox.Lang.Float{
 
-
         function initialize(){
             Float.initialize();
         }
@@ -37,7 +36,7 @@ module BytePacking{
                 throw new Toybox.Lang.InvalidValueException("Input cannot be inf or nan");
             }
             if( input.toDouble() == 0){
-                // special separate case, because the exponent is set to zero - TODO: subnormal inclusive?
+                // special separate case, because the exponent is set to zero
                 return [0x00,0x00,0x00,0x00]b;
             }
 
@@ -211,43 +210,73 @@ module BytePacking{
 
 
         static function byteArrayToFloat(input as Toybox.Lang.ByteArray) as Toybox.Lang.Float {
-            // TODO: input validation
+            if(!(input instanceof Toybox.Lang.ByteArray) ){
+                throw new Toybox.Lang.UnexpectedTypeException("Expecting Toybox.Lang.ByteArray argument type",null,null);
+            }
 
-            // TODO: inf/nan check
+            if(input.size()!=4){
+                throw new Toybox.Lang.InvalidValueException("Need 4 bytes to convert to float");
+            }
 
-            // all zeros? return 0f
             var allZerosFourBytes = [0x00,0x00,0x00,0x00]b;
-            if(input == allZerosFourBytes){ // TODO test this
-                return 0f;//TODO: subnormal inclusive?
+            if(input == allZerosFourBytes){
+                return 0f;
             }
 
             var output = 0f;
+
+            // we convert to long as longs are useful for bit manitpulation operators (>>,>>,|,&) and
+            // since float array is 4 bytes we add another 4 for a succesfull to long conversion.
+            // We will ignore the tail bits.
             var longEquivalent = BytePacking.BPLong.byteArrayToLong(allZerosFourBytes.addAll(input));
             
-
+            // if leading bit is '1' then it is a negative number. We shift to make this comparison
             var isNegative = (longEquivalent >> (SHIFT_DUE_TO_FLOAT - 1)) == 1l;
             // now remove the sign bit
-            longEquivalent = longEquivalent & longWithFirstNBitsZero( SHIFT_DUE_TO_FLOAT + 1);
+            longEquivalent = longEquivalent & longWithFirstNBitsZero( SHIFT_DUE_TO_FLOAT + BITS_IN_SIGN );
+
+            // As sign bit is removed, we remove the tail mantissa portion to get the middle exponent value portion
             var exponentValue = ( (longEquivalent >> BITS_IN_FLOAT_MANTISSA) - FLOAT_EXPONENT_BIAS ).toNumber();
-            //TODO test inf/nan
+
+            if(exponentValue + FLOAT_EXPONENT_BIAS == FLOAT_ALL_ONES_EXPONENT){
+                throw new Toybox.Lang.InvalidValueException("Exponent all 1's - we don't deal with nans/infs");
+            }
 
             //TODO: generalize for double and float
 
-            // TODO commenting
+            // we isolate the mantissa from all the other bits
             var mantissaLong = ( longEquivalent ) & longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA) ;
+
+            // Here we are adding the leading one bit, that is assumed to the left of the mantissa
             var mantissaLeadingOne = 1l << BITS_IN_FLOAT_MANTISSA;
             mantissaLong = mantissaLong | mantissaLeadingOne;
+
             if(exponentValue >= 0){
+                /*
+                    The decimal valie will have something to left of the decimal (e.g. 123 in 123.3453).
+                    
+                    We split our logic to parse both sides of the "."
+                */
                 var integerPortionMantissaLong = mantissaLong;
                 var doublePortionMantissaLong = 0l;
+
                 if(exponentValue < BITS_IN_FLOAT_MANTISSA){
+                    /*
+                        The exponent value is small enough that not all the mantissa bits are used
+                        for the integer portion which is why we now compute the decimal portion
+                        (e.g. the 3454 in 123.3453)
+                    */
+
+                    // make sure integer portion bits only contain integer portion bits
                     integerPortionMantissaLong = mantissaLong >> (BITS_IN_FLOAT_MANTISSA - exponentValue);
+
+                    //  the rest of the bits are for computing the decimal
                     doublePortionMantissaLong = mantissaLong & longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA+exponentValue);
                     var newDecimalData = DecimalData.newDecimalData(doublePortionMantissaLong,BITS_IN_FLOAT_MANTISSA-exponentValue );
                     output = output + newDecimalData.getDecimalOfBits();
                 }
 
-                var newFloorData = FloorData.newFloorData(integerPortionMantissaLong,exponentValue+1);
+                var newFloorData = FloorData.newFloorData(integerPortionMantissaLong,exponentValue+BytePacking.LEADING_ONE_OUTSIDE_MANTISSA_BIT);
                 output = output +  newFloorData.getFloorOfBits();
                 
             }
@@ -257,8 +286,10 @@ module BytePacking{
                     output = output + newDecimalData.getDecimalOfBits();
                 }
                 else{
+                    // subnormal case where the leading one must be replaced with a leading zero
                     var mantissaLeadingZero = longWithFirstNBitsZero(BITS_IN_LONG-BITS_IN_FLOAT_MANTISSA) & mantissaLong;
-                    var newDecimalData = DecimalData.newDecimalData(mantissaLeadingZero,(exponentValue).abs() + BITS_IN_FLOAT_MANTISSA - 1);
+                    
+                    var newDecimalData = DecimalData.newDecimalData(mantissaLeadingZero,(exponentValue).abs() + BITS_IN_FLOAT_MANTISSA - BytePacking.LEADING_ONE_OUTSIDE_MANTISSA_BIT);
                     output = output + newDecimalData.getDecimalOfBits();
                 }
             }            
