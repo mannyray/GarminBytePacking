@@ -193,6 +193,8 @@ module BytePackingTesting{
             654321l, // 10011111101111110001 - 20 digits
             9237l // 10010000010101 -  14 digits
             ];
+
+        // we specify the exact amount of bit digits required for each number
         var bitsRequired = [10, 13, 20, 14, 8];
         /*
             pad one of the entries with zeros
@@ -205,7 +207,7 @@ module BytePackingTesting{
         */
 
         bitsRequired[2]+= 1;
-        // we now have 58 bits
+        // we now have 58 bits to be stored
 
         // Let's starting packing the data into the long:
         var packed = new BytePacking.BPLongPacked();
@@ -223,7 +225,6 @@ module BytePackingTesting{
             is equivalent to -9007337107100203712
 
             Out of 64 bits in long, 6 bits are maining as first 58 are used
-            
         */
         Test.assert(packed.getData() == -9007337107100203712l);
         
@@ -244,7 +245,27 @@ module BytePackingTesting{
             );
         }
 
-        //However 32 fits as it is 6 bits
+        //However 32 fits as it is 6 bits, but we first incorrectly try to fit in 5 bits
+        try {
+            packed.addData(BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(32l,5));
+            Test.assert(1 == 0);//should never be reached.
+        } catch (e instanceof Toybox.Lang.InvalidValueException) {
+            var acquiredErrorMessage = e.getErrorMessage();
+            var expectedErrorMessage = "maxBitCount is less than actual bit count";
+            Test.assertMessage(
+                acquiredErrorMessage.find(expectedErrorMessage) != null,
+                "Invalid error message. Got '" +
+                acquiredErrorMessage +
+                "', expected: '" +
+                expectedErrorMessage +
+                "'"
+            );
+        }
+
+        /*
+            BytePacking.BinaryDataPair.binaryDataPairWithMaxBits can be called when wanting a specific bit count
+            or you can use the exact bit count needed for the long number by calling BytePacking.BinaryDataPair
+        */
         packed.addData(new BytePacking.BinaryDataPair(32l));
 
         /*
@@ -259,11 +280,12 @@ module BytePackingTesting{
             and verify that it is equal to what is expected
         */
         var byteArray = BytePacking.BPLong.longToByteArray(packed.getData());
-        assertEquivalencyBetweenByteArrays(byteArray, [0x82,0xFF,0x82,0x9F,0xBF,0x19,0x05,0x60]b);
+        assertEquivalencyBetweenByteArrays(byteArray, [0x82,0xFF,0x82,0x9F,0xBF,0x19,0x05,0x60]b);// the bits in hex form
 
         /*
             Now that we have the byte array of a long which is 64 bits, we can express it as 
             a double which is also 64 bits long
+            value from https://baseconvert.com/ieee-754-floating-point
         */
         Test.assert(BytePacking.BPDouble.byteArrayToDouble(byteArray)==-3.0835862373866053e-294d);
 
