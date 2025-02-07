@@ -34,6 +34,8 @@
             Use "Monkey C: Configure Monkey Barrel" from the Visual Studio Code
             command palette to edit the included barrels.
         -->
-        <iq:barrels/>
+        <iq:barrels>
+            <iq:depends name="BytePacking" version="0.0.0"/>
+        </iq:barrels>
     </iq:application>
 </iq:manifest>
