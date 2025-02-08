@@ -185,7 +185,7 @@ module BytePackingTesting{
     function Long_BPLongPacked_test(logger as Toybox.Test.Logger) as Boolean {
         
         /*
-            We have a few numbers we want to pack into a single long
+            We have a few numbers we want to pack into a 64 bit long
         */
         var numbers = [
             523l, // 1000001011 - 10 digits
@@ -195,7 +195,7 @@ module BytePackingTesting{
             ];
 
         // we specify the exact amount of bit digits required for each number
-        var bitsRequired = [10, 13, 20, 14, 8];
+        var bitsRequired = [10, 13, 20, 14];
         /*
             pad one of the entries with zeros
 

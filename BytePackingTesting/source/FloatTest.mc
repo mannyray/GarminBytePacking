@@ -76,4 +76,43 @@ module BytePackingTesting{
         }
         return true;
     }
+
+
+    (:test)
+    function FloatTest_testPacking(logger as Toybox.Test.Logger) as Boolean {
+        
+        // using https://baseconvert.com/ieee-754-floating-point
+        
+        var float1 = 1234.1234f; //0 10001001 00110100100001111110011
+        var float2 = -12345.243687f; //1 10001100 10000001110010011111010
+
+        var floatArr1 = BytePacking.BPFloat.floatToByteArray(float1);
+        var floatArr2 = BytePacking.BPFloat.floatToByteArray(float2);
+
+        var singleArr = floatArr1.addAll(floatArr2);
+        Test.assert(BytePacking.BPDouble.byteArrayToDouble(singleArr)==3.100875655157453e+22d);
+        
+        return true;
+    }
+
+
+    (:test)
+    function Introduction_Test(logger as Toybox.Test.Logger) as Boolean{
+        var someLong = 123l;
+        var byteArray = BytePacking.BPLong.longToByteArray(someLong);
+        Test.assert(byteArray.equals([0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x7B]b));
+        Test.assert(BytePacking.BPLong.byteArrayToLong(byteArray) == someLong);
+
+        var someFloat = 123.34f;
+        byteArray = BytePacking.BPFloat.floatToByteArray(someFloat);
+        Test.assert(byteArray.equals([0x42,0xF6,0xAE,0x14]b));
+        Test.assert(BytePacking.BPFloat.byteArrayToFloat(byteArray) == someFloat);
+
+        var someDouble = 1234578.65432d;
+        byteArray = BytePacking.BPDouble.doubleToByteArray(someDouble);
+        Test.assert(byteArray.equals([0x41,0x32,0xD6,0x92,0xA7,0x81,0x83,0xF9]b));
+        Test.assert(BytePacking.BPDouble.byteArrayToDouble(byteArray) == someDouble);
+
+        return true;
+    }
 }
