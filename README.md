@@ -166,7 +166,7 @@ In general, you can pack anything you want into a Double, as long as it all is w
 
 The examples above don't deal with actually saving to a Garmin data field. In `TestApp/`, we have a simple watch app for the 955 solar that displays "Hello World" and creates and saves a fit field just with our data.
 
-![](assets/watch.png)
+<img src="assets/watch.png" width=50%>
 
 Files `TestApp.mc`, `TestAppDelegate.mc` and `TestAppView.mc` provide the core structure of our skeleton app while `TestField.mc` provides an extremely basic setup for creating, closing a Garmin data field and saving data to it - there we mention that we are saving the data as as `DATA_TYPE_DOUBLE`:
 
