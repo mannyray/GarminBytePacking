@@ -90,7 +90,8 @@ Test.assert(packed.getCurrentBitOccuputation()==58);
 */
 Test.assert(packed.getData() == -9007337107100203712l);
 
-// we now try to pack something that does not fit into the remaining 6 bits ( 64 == 7 bits) and fail
+// we now try to pack something that does not fit into the remaining
+// 6 bits ( 64 == 7 bits) and fail
 try {
     packed.addData(new BytePacking.BinaryDataPair(64l));
     Test.assert(1 == 0);//should never be reached.

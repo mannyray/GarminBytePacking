@@ -40,14 +40,7 @@ module BytePackingTesting{
                 currentPercentageStartTime = System.getTimer();
             }
             if(number.toString().equals("nan")){
-                //TODO: what do we do here?
-                //TODO: what do we do for inf?
-                // 0.4 percent of are floats are nans https://stackoverflow.com/questions/19800415/why-does-ieee-754-reserve-so-many-nan-values
-                // ^ which is significant for byke packing conerns
-                // maybe according to https://en.wikipedia.org/wiki/IEEE_754-1985#:~:text=Positive%20and%20negative%20infinity%20are,biased%20exponent%20%3D%20all%201%20bits.
-                // we restirct the left most bit of the exponent when byte packing?
-                //https://forums.garmin.com/developer/connect-iq/f/discussion/338071/testing-for-nan/1777041#1777041
-                //is there a gaunrateed bit location that prevents infs and nans?
+                // 0.4 percent of floats are nans https://stackoverflow.com/questions/19800415/why-does-ieee-754-reserve-so-many-nan-values
                 continue;
             }
             testTwoWayASingleFloat(number);
