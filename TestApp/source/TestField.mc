@@ -48,7 +48,12 @@ class Session {
     }
 
     hidden function setupFields() {
-        dataField = session.createField("field", DATA_FIELD_ID, FitContributor.DATA_TYPE_DOUBLE, { :mesgType=>Fit.MESG_TYPE_RECORD });
+        dataField = session.createField(
+            "field",
+            DATA_FIELD_ID,
+            FitContributor.DATA_TYPE_DOUBLE,
+            { :mesgType=>Fit.MESG_TYPE_RECORD }
+        );
     }
 
     function recordData(data as Toybox.Lang.Double) {

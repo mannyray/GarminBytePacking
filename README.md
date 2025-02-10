@@ -39,8 +39,8 @@ In our example above we are packing heart beat into a single double - why would 
 In the previous section we introduced why we might need to pack various data into a Double. Let's practice with a code example below which is part of our test suite [here](https://github.com/mannyray/GarminBytePacking/blob/master/BytePackingTesting/source/LongTest.mc#L185). In this example we store various data as part of a `BytePacking.BPLongPacked()` object which under the hood used a Long to store the incoming data. This object makes sure we don't attempt to store too much into a single Long. Once we have finished storing we can call `BytePacking.BPLongPacked.getData()` which gives us the Long at which point we can convert it to ByteArray via the code seen at the beginning of this page. From the ByteArray we can convert to a Double.
 
 ```javascript
-/*
-We have a few numbers we want to pack into a single long
+ /*
+    We have a few numbers we want to pack into a 64 bit long
 */
 var numbers = [
     523l, // 1000001011 - 10 digits
@@ -67,15 +67,22 @@ bitsRequired[2]+= 1;
 // Let's starting packing the data into the long:
 var packed = new BytePacking.BPLongPacked();
 for(var i=0; i<numbers.size(); i++){
-    packed.addData(BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(numbers[i],bitsRequired[i]));
+    packed.addData(
+        BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(
+            numbers[i],
+            bitsRequired[i]
+        )
+    );
 }
 
 Test.assert(packed.getCurrentBitOccuputation()==58);
 
 /*
     Our number is
-    1000001011 1111111000001 0 10011111101111110001 10010000010101 (that's the 58 up to now and the rest zeros) 000000
-    or compacted 1000001011111111100000101001111110111111000110010000010101000000 which according to
+    1000001011 1111111000001 0 10011111101111110001 10010000010101
+    (that's the 58 up to now and the rest zeros) 000000
+    or compacted 1000001011111111100000101001111110111111000110010000010101000000
+    which according to
     https://www.rapidtables.com/convert/number/binary-to-decimal.html
     is equivalent to -9007337107100203712
 
@@ -118,8 +125,10 @@ try {
 }
 
 /*
-    BytePacking.BinaryDataPair.binaryDataPairWithMaxBits can be called when wanting a specific bit count
-    or you can use the exact bit count needed for the long number by calling BytePacking.BinaryDataPair
+    BytePacking.BinaryDataPair.binaryDataPairWithMaxBits can be
+    called when wanting a specific bit count
+    or you can use the exact bit count needed for the
+    long number by calling BytePacking.BinaryDataPair
 */
 packed.addData(new BytePacking.BinaryDataPair(32l));
 
@@ -135,7 +144,8 @@ Test.assert(packed.getCurrentBitOccuputation()==64);// no more bits left over
     and verify that it is equal to what is expected
 */
 var byteArray = BytePacking.BPLong.longToByteArray(packed.getData());
-assertEquivalencyBetweenByteArrays(byteArray, [0x82,0xFF,0x82,0x9F,0xBF,0x19,0x05,0x60]b);// the bits in hex form
+// the bits in hex form
+assertEquivalencyBetweenByteArrays(byteArray, [0x82,0xFF,0x82,0x9F,0xBF,0x19,0x05,0x60]b);
 
 /*
     Now that we have the byte array of a long which is 64 bits, we can express it as 
@@ -171,14 +181,23 @@ The examples above don't deal with actually saving to a Garmin data field. In `T
 Files `TestApp.mc`, `TestAppDelegate.mc` and `TestAppView.mc` provide the core structure of our skeleton app while `TestField.mc` provides an extremely basic setup for creating, closing a Garmin data field and saving data to it - there we mention that we are saving the data as as `DATA_TYPE_DOUBLE`:
 
 ```javascript
-dataField = session.createField("field", DATA_FIELD_ID, FitContributor.DATA_TYPE_DOUBLE, { :mesgType=>Fit.MESG_TYPE_RECORD });
+dataField = session.createField(
+    "field",
+    DATA_FIELD_ID,
+    FitContributor.DATA_TYPE_DOUBLE,
+    { :mesgType=>Fit.MESG_TYPE_RECORD }
+);
 ```
 
 within `TestApp.mc`'s initialization of the app we create the session for the Garmin field as well as setup a function that will be called regularly in order to save our data. 
 
 ```javascript
 session = new Session();
-timer.start( method(:onTimerTic),2000,true); // here, every two seconds (number can't be less than a 1000 due to Garmin restriction)
+/*
+    Every 2000 milliseconds (number can't be less than a 1000 
+    due to setData restrictions)
+*/
+timer.start( method(:onTimerTic),2000,true);
 ```
 
 Within `onTimerTic`, we have the code that is similar to the one we saw in a previous example:
@@ -188,11 +207,17 @@ var bitsRequired = [10, 13, 20, 14, 6];
 bitsRequired[2]+= 1;
 var packed = new BytePacking.BPLongPacked();
 for(var i=0; i<numbers.size(); i++){
-    packed.addData(BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(numbers[i],bitsRequired[i]));
+    packed.addData(
+        BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(
+            numbers[i],
+            bitsRequired[i]
+        )
+    );
 }
 var byteArray = BytePacking.BPLong.longToByteArray(packed.getData());
-var output = BytePacking.BPDouble.byteArrayToDouble(byteArray);
-session.recordData(output);
+var dataDoubleEquivalent = BytePacking.BPDouble.byteArrayToDouble(byteArray);
+// now that we have converted the data to a double, we save it to FIT file
+session.recordData(dataDoubleEquivalent);
 ```
 
 After running the watch app, you will have generated a fit file. At this point, I am assuming if you, the reader, are digging this deep then you must be familiar with how to extract the fit file, generated by this watch app. We load it onto our computer and run the script located in `TestParsing/script.py`:

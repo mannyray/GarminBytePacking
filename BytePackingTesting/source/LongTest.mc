@@ -212,15 +212,22 @@ module BytePackingTesting{
         // Let's starting packing the data into the long:
         var packed = new BytePacking.BPLongPacked();
         for(var i=0; i<numbers.size(); i++){
-            packed.addData(BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(numbers[i],bitsRequired[i]));
+            packed.addData(
+                BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(
+                    numbers[i],
+                    bitsRequired[i]
+                )
+            );
         }
 
         Test.assert(packed.getCurrentBitOccuputation()==58);
 
         /*
             Our number is
-            1000001011 1111111000001 0 10011111101111110001 10010000010101 (that's the 58 up to now and the rest zeros) 000000
-            or compacted 1000001011111111100000101001111110111111000110010000010101000000 which according to
+            1000001011 1111111000001 0 10011111101111110001 10010000010101
+            (that's the 58 up to now and the rest zeros) 000000
+            or compacted 1000001011111111100000101001111110111111000110010000010101000000
+            which according to
             https://www.rapidtables.com/convert/number/binary-to-decimal.html
             is equivalent to -9007337107100203712
 
@@ -263,8 +270,10 @@ module BytePackingTesting{
         }
 
         /*
-            BytePacking.BinaryDataPair.binaryDataPairWithMaxBits can be called when wanting a specific bit count
-            or you can use the exact bit count needed for the long number by calling BytePacking.BinaryDataPair
+            BytePacking.BinaryDataPair.binaryDataPairWithMaxBits can be
+            called when wanting a specific bit count
+            or you can use the exact bit count needed for the
+            long number by calling BytePacking.BinaryDataPair
         */
         packed.addData(new BytePacking.BinaryDataPair(32l));
 
@@ -280,7 +289,8 @@ module BytePackingTesting{
             and verify that it is equal to what is expected
         */
         var byteArray = BytePacking.BPLong.longToByteArray(packed.getData());
-        assertEquivalencyBetweenByteArrays(byteArray, [0x82,0xFF,0x82,0x9F,0xBF,0x19,0x05,0x60]b);// the bits in hex form
+        // the bits in hex form
+        assertEquivalencyBetweenByteArrays(byteArray, [0x82,0xFF,0x82,0x9F,0xBF,0x19,0x05,0x60]b);
 
         /*
             Now that we have the byte array of a long which is 64 bits, we can express it as 

@@ -12,6 +12,10 @@ class TestApp extends Application.AppBase {
     function initialize() {
         AppBase.initialize();
         session = new Session();
+        /*
+            Every 2000 milliseconds (number can't be less than a 1000 
+            due to setData restrictions)
+        */
         timer.start( method(:onTimerTic),2000,true);
 
     }
@@ -46,11 +50,17 @@ class TestApp extends Application.AppBase {
                 bitsRequired[2]+= 1;
                 var packed = new BytePacking.BPLongPacked();
                 for(var i=0; i<numbers.size(); i++){
-                    packed.addData(BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(numbers[i],bitsRequired[i]));
+                    packed.addData(
+                        BytePacking.BinaryDataPair.binaryDataPairWithMaxBits(
+                            numbers[i],
+                            bitsRequired[i]
+                        )
+                    );
                 }
                 var byteArray = BytePacking.BPLong.longToByteArray(packed.getData());
-                var output = BytePacking.BPDouble.byteArrayToDouble(byteArray);
-                session.recordData(output);
+                var dataDoubleEquivalent = BytePacking.BPDouble.byteArrayToDouble(byteArray);
+                // now that we have converted the data to a double, we save it to FIT file
+                session.recordData(dataDoubleEquivalent);
             }
             else{
                 session.stop();
