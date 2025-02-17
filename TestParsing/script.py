@@ -33,5 +33,9 @@ with fitdecode.FitReader('2025-02-07-16-28-55.fit') as fit:
                     ordered_lengths_of_data = [10, 13, 21, 14, 6]
                     starting_index = 0
                     for current_data_length in ordered_lengths_of_data:
-                        print(binary_to_long(binary_string,starting_index,starting_index+current_data_length))
+                        print(binary_to_long(
+                            binary_string,
+                            starting_index,
+                            starting_index+current_data_length
+                        ))
                         starting_index = starting_index + current_data_length
