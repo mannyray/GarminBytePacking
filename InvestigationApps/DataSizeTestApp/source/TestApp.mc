@@ -16,7 +16,7 @@ class TestApp extends Application.AppBase {
         session = new Session();
         counter = 0l;
         startTimeStamp = System.getTimer().toLong();
-        timer.start( method(:onTimerTic),1000,true);
+        timer.start( method(:onTimerTic),1050,true);
     }
 
     // onStart() is called on application start up

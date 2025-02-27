@@ -23,6 +23,8 @@ timestamps = []
 diff = []
 #2025-02-10-14-34-31.fit - original 18 hour experiment
 #2025-02-12-12-40-26.fit - 10 hour, 2nd, experiment, contains diff element
+#2025-02-26-09-54-51.fit - 18 hour experiment, writing every 1050ms
+# ^ max entry reached there was 63911
 with fitdecode.FitReader('2025-02-12-12-40-26.fit') as fit:
     for frame in fit:
         if frame.frame_type == fitdecode.FIT_FRAME_DATA:
@@ -56,7 +58,7 @@ consecutive timestamps (that are not the skipped 2 second type)
 def timestamp_analyze(arr, timestamps):
     dict = {}
     for i in range(1, len(arr)):
-        if arr[i] == 65535:
+        if arr[i] == 65535:#63911
             break
         difference_key = timestamps[i] - timestamps[i-1]
         if difference_key > 1990:
